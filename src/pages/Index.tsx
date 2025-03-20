@@ -1,13 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { AlertCircle, Info } from 'lucide-react';
+import { AlertCircle, Info, History as HistoryIcon, User } from 'lucide-react';
 import { useTimer, BreakEntry } from '@/hooks/useTimer';
 import { useLocation } from '@/hooks/useLocation';
 import TimeStatus from '@/components/TimeStatus';
 import ClockControls from '@/components/ClockControls';
 import TimeSummary from '@/components/TimeSummary';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from '@/components/ui/button';
+import { getCurrentEmployee, addTimeRecord } from '@/services/employeeService';
+import { useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
 
 type BreakType = 'Salah' | 'Meeting' | 'Lunch' | 'Breakfast' | 'Break';
 type AppStatus = 'inactive' | 'active' | 'break';
@@ -23,8 +27,17 @@ const Index = () => {
     breakEntries: BreakEntry[];
   } | null>(null);
 
+  const navigate = useNavigate();
   const timer = useTimer();
   const location = useLocation();
+  const currentEmployee = getCurrentEmployee();
+
+  // Check if user is logged in
+  useEffect(() => {
+    if (!currentEmployee) {
+      navigate('/login');
+    }
+  }, [currentEmployee, navigate]);
 
   const handleClockIn = async () => {
     try {
@@ -55,7 +68,20 @@ const Index = () => {
       const result = timer.stopTimer();
       setStatus('inactive');
       
-      if (result.startTime && result.endTime) {
+      if (result.startTime && result.endTime && currentEmployee) {
+        const timeRecord = {
+          id: uuidv4(),
+          employeeId: currentEmployee.id,
+          clockInTime: result.startTime,
+          clockOutTime: result.endTime,
+          location: location.address || 'Location not available',
+          totalWorkDuration: result.elapsedTime,
+          breakEntries: result.breaks
+        };
+        
+        // Save the time record
+        addTimeRecord(timeRecord);
+        
         setSummaryData({
           clockInTime: result.startTime,
           clockOutTime: result.endTime,
@@ -99,17 +125,55 @@ const Index = () => {
     setSummaryData(null);
   };
 
+  if (!currentEmployee) {
+    return null; // Will redirect to login
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="w-full bg-white shadow-soft z-10">
         <div className="container max-w-md mx-auto px-4 py-5">
-          <h1 className="text-2xl font-semibold text-center">TimeTrack</h1>
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-semibold">TimeTrack</h1>
+            
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => navigate('/history')}
+                title="View History"
+              >
+                <HistoryIcon className="h-5 w-5" />
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => navigate('/login')}
+                title="Profile"
+              >
+                <User className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
         </div>
       </header>
 
       <main className="flex-grow container max-w-md mx-auto px-4 py-6 space-y-6">
         {!showSummary ? (
           <>
+            <div className="w-full bg-secondary rounded-xl p-3 animate-enter animate-delay-100">
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                  <User className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-medium">{currentEmployee.name}</h3>
+                  <p className="text-sm text-muted-foreground">{currentEmployee.email}</p>
+                </div>
+              </div>
+            </div>
+            
             <TimeStatus 
               status={status}
               clockInTime={timer.startTime || undefined}
@@ -158,12 +222,23 @@ const Index = () => {
                 breakEntries={summaryData.breakEntries}
               />
               
-              <button
-                onClick={resetView}
-                className="button-secondary w-full"
-              >
-                Back to Clock
-              </button>
+              <div className="flex flex-col space-y-2">
+                <Button
+                  onClick={() => navigate('/history')}
+                  className="w-full"
+                >
+                  <HistoryIcon className="mr-2 h-4 w-4" />
+                  View History
+                </Button>
+                
+                <Button
+                  onClick={resetView}
+                  className="w-full"
+                  variant="secondary"
+                >
+                  Back to Clock
+                </Button>
+              </div>
             </div>
           )
         )}
