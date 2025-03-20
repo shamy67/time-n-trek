@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getCurrentEmployee } from '@/services/employeeService';
 import QRCodeScanner from '@/components/QRCodeScanner';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,17 @@ import { CheckCircle } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const currentEmployee = getCurrentEmployee();
   const [isLoggedIn, setIsLoggedIn] = useState(!!currentEmployee);
+
+  // Check for URL parameters on load
+  useEffect(() => {
+    // If user is already logged in, no need to process URL parameters
+    if (isLoggedIn) return;
+    
+    // The QRCodeScanner component will handle the actual URL parameter processing
+  }, [isLoggedIn]);
 
   const handleLogin = () => {
     setIsLoggedIn(true);

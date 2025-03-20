@@ -21,6 +21,46 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
   const [manualCode, setManualCode] = useState('');
   const navigate = useNavigate();
 
+  // Check if URL contains employee data
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const encodedData = url.searchParams.get('employeeData');
+    
+    if (encodedData) {
+      try {
+        // Decode and parse the employee data
+        const decodedData = decodeURIComponent(encodedData);
+        const employeeData = JSON.parse(decodedData);
+        
+        if (employeeData.id && employeeData.name) {
+          // Set current employee
+          setCurrentEmployee(employeeData.id);
+          
+          // Add employee if not exists
+          try {
+            addEmployee(employeeData);
+          } catch (e) {
+            // Employee might already exist
+          }
+          
+          toast.success('Login successful');
+          
+          // Clear the URL parameter without reloading
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
+          // Navigate to dashboard or call onLogin
+          if (onLogin) {
+            onLogin();
+          } else {
+            navigate('/');
+          }
+        }
+      } catch (error) {
+        toast.error('Invalid QR code data');
+      }
+    }
+  }, [navigate, onLogin]);
+
   // Generate a unique ID for the employee
   const generateEmployeeId = () => {
     return Math.random().toString(36).substring(2, 15) + 
@@ -47,8 +87,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
     // Save employee to storage
     addEmployee(employeeData);
     
-    // Generate QR value
-    setQrValue(JSON.stringify(employeeData));
+    // Generate QR value with app URL and employee data
+    const baseUrl = window.location.origin;
+    const loginUrl = `${baseUrl}/login?employeeData=${encodeURIComponent(JSON.stringify(employeeData))}`;
+    setQrValue(loginUrl);
     setIsGenerating(true);
     
     toast.success('QR code generated successfully', {
@@ -156,7 +198,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Employee QR Code</h3>
           <p className="text-sm text-muted-foreground">
-            Scan this QR code or use the provided code to login to the TimeTrack app.
+            Scan this QR code with your mobile device to instantly log in to the TimeTrack app.
           </p>
           
           <div className="flex justify-center py-4">
