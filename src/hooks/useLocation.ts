@@ -24,11 +24,45 @@ export function useLocation(): UseLocationResult {
 
   const fetchAddress = async (lat: number, lng: number): Promise<string> => {
     try {
-      // For a real app, you would use a geocoding service API like Google Maps or Mapbox
-      // This is a mock implementation
+      // Use the Nominatim OpenStreetMap API to get the address
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch address');
+      }
+      
+      const data = await response.json();
+      
+      // Format the address from the response
+      if (data.display_name) {
+        // Extract the most relevant parts for a cleaner display
+        const addressParts = data.address;
+        
+        if (addressParts) {
+          // Create a readable address with the most important components
+          const formattedAddress = [
+            addressParts.building,
+            addressParts.road,
+            addressParts.suburb,
+            addressParts.city || addressParts.town,
+            addressParts.state,
+            addressParts.country
+          ]
+            .filter(Boolean)
+            .join(', ');
+            
+          return formattedAddress || data.display_name;
+        }
+        
+        return data.display_name;
+      }
+      
       return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     } catch (error) {
       console.error('Error fetching address:', error);
+      // Fallback to coordinates if the address lookup fails
       return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     }
   };

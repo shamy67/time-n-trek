@@ -28,6 +28,25 @@ const TimeStatus: React.FC<TimeStatusProps> = ({
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
+  // Format location display to show only the most relevant parts
+  const formatLocation = (location: string) => {
+    if (!location) return '';
+    
+    // If it's coordinates (fallback), return as is
+    if (location.match(/^\d+\.\d+, \d+\.\d+$/)) {
+      return location;
+    }
+    
+    // If it's a full address, try to make it more concise
+    const parts = location.split(', ');
+    if (parts.length > 3) {
+      // Return a shortened version with the most important parts
+      return `${parts[0]}, ${parts[parts.length - 3]}, ${parts[parts.length - 1]}`;
+    }
+    
+    return location;
+  };
+
   return (
     <div className="w-full p-5 glass-panel rounded-xl animate-enter">
       <div className="flex items-center justify-between mb-4">
@@ -63,7 +82,7 @@ const TimeStatus: React.FC<TimeStatusProps> = ({
           {location && (
             <div className="flex items-start text-muted-foreground">
               <MapPin className="w-4 h-4 mr-2 mt-1 flex-shrink-0" />
-              <span className="text-sm">{location}</span>
+              <span className="text-sm">{formatLocation(location)}</span>
             </div>
           )}
         </div>
