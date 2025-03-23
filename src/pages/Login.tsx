@@ -1,16 +1,30 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getCurrentEmployee } from '@/services/employeeService';
+import { 
+  getCurrentEmployee, 
+  initializeAdmin, 
+  loginWithCredentials 
+} from '@/services/employeeService';
 import QRCodeScanner from '@/components/QRCodeScanner';
 import { Button } from '@/components/ui/button';
-import { CheckCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { CheckCircle, Lock, User, LockKeyhole } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const currentEmployee = getCurrentEmployee();
   const [isLoggedIn, setIsLoggedIn] = useState(!!currentEmployee);
+  const [showCredentialLogin, setShowCredentialLogin] = useState(false);
+  const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Initialize admin account
+  useEffect(() => {
+    initializeAdmin();
+  }, []);
 
   // Check for URL parameters on load
   useEffect(() => {
@@ -23,6 +37,29 @@ const Login = () => {
   const handleLogin = () => {
     setIsLoggedIn(true);
     navigate('/');
+  };
+
+  const handleCredentialLogin = () => {
+    if (!userId.trim() || !password.trim()) {
+      toast.error('Please enter both user ID and password');
+      return;
+    }
+
+    const employee = loginWithCredentials(userId, password);
+    
+    if (employee) {
+      setIsLoggedIn(true);
+      
+      if (employee.isAdmin) {
+        navigate('/admin');
+        toast.success('Welcome, Administrator');
+      } else {
+        navigate('/');
+        toast.success('Login successful');
+      }
+    } else {
+      toast.error('Invalid credentials');
+    }
   };
 
   return (
@@ -46,10 +83,10 @@ const Login = () => {
               </div>
             </div>
             <Button
-              onClick={() => navigate('/')}
+              onClick={() => navigate(currentEmployee.isAdmin ? '/admin' : '/')}
               className="w-full"
             >
-              Go to Dashboard
+              Go to {currentEmployee.isAdmin ? 'Admin Dashboard' : 'Dashboard'}
             </Button>
             <Button
               onClick={() => {
@@ -62,8 +99,69 @@ const Login = () => {
               Logout
             </Button>
           </div>
+        ) : showCredentialLogin ? (
+          <div className="w-full glass-panel rounded-xl p-6 space-y-4 animate-enter">
+            <h3 className="text-lg font-medium text-center">Login with Credentials</h3>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">User ID</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                  <Input 
+                    value={userId}
+                    onChange={(e) => setUserId(e.target.value)}
+                    placeholder="Enter your ID or 'admin'"
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Password</label>
+                <div className="relative">
+                  <LockKeyhole className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                  <Input 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    type="password"
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <Button
+              onClick={handleCredentialLogin}
+              className="w-full"
+            >
+              Login
+            </Button>
+            
+            <Button
+              onClick={() => setShowCredentialLogin(false)}
+              className="w-full"
+              variant="outline"
+            >
+              Back to QR Code Login
+            </Button>
+          </div>
         ) : (
-          <QRCodeScanner onLogin={handleLogin} />
+          <>
+            <QRCodeScanner onLogin={handleLogin} />
+            
+            <div className="text-center">
+              <Button
+                onClick={() => setShowCredentialLogin(true)}
+                variant="link"
+                className="text-muted-foreground"
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                Login with ID & Password
+              </Button>
+            </div>
+          </>
         )}
       </main>
 

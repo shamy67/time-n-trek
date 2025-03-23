@@ -1,31 +1,31 @@
 
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import History from "./pages/History";
-import NotFound from "./pages/NotFound";
+import { Toaster as SonnerToaster } from "@/components/ui/sonner";
+import Index from '@/pages/Index';
+import Login from '@/pages/Login';
+import History from '@/pages/History';
+import Admin from '@/pages/Admin';
+import EmployeeDetails from '@/pages/EmployeeDetails';
+import NotFound from '@/pages/NotFound';
+import './App.css';
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/history" element={<History />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/employee/:id" element={<EmployeeDetails />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
       <Toaster />
-      <Sonner position="top-center" closeButton={true} />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/history" element={<History />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      <SonnerToaster position="top-center" />
+    </Router>
+  );
+}
 
 export default App;

@@ -6,6 +6,8 @@ export interface Employee {
   name: string;
   email: string;
   joinedAt: Date;
+  password?: string;
+  isAdmin?: boolean;
 }
 
 export interface TimeRecord {
@@ -32,9 +34,47 @@ export const getEmployees = (): Employee[] => {
 // Add a new employee
 export const addEmployee = (employee: Employee): Employee => {
   const employees = getEmployees();
-  employees.push(employee);
+  
+  // Check if admin exists already, if not and this is the first employee, make it admin
+  const adminExists = employees.some(emp => emp.isAdmin);
+  if (!adminExists && employee.id === 'admin') {
+    employee.isAdmin = true;
+  }
+  
+  // Check if employee already exists
+  const existingEmployeeIndex = employees.findIndex(emp => emp.id === employee.id);
+  if (existingEmployeeIndex !== -1) {
+    // Update existing employee
+    employees[existingEmployeeIndex] = {
+      ...employees[existingEmployeeIndex],
+      ...employee
+    };
+  } else {
+    // Add new employee
+    employees.push(employee);
+  }
+  
   localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
   return employee;
+};
+
+// Initialize admin account if it doesn't exist
+export const initializeAdmin = (): void => {
+  const employees = getEmployees();
+  const adminExists = employees.some(emp => emp.id === 'admin');
+  
+  if (!adminExists) {
+    const adminEmployee: Employee = {
+      id: 'admin',
+      name: 'Administrator',
+      email: 'admin@timetrack.com',
+      joinedAt: new Date(),
+      password: 'admin',
+      isAdmin: true
+    };
+    
+    addEmployee(adminEmployee);
+  }
 };
 
 // Get employee by ID
@@ -55,6 +95,29 @@ export const getCurrentEmployee = (): Employee | null => {
   
   const employee = getEmployeeById(employeeId);
   return employee || null;
+};
+
+// Login with credentials
+export const loginWithCredentials = (id: string, password: string): Employee | null => {
+  const employee = getEmployeeById(id);
+  
+  if (employee && employee.password === password) {
+    setCurrentEmployee(employee.id);
+    return employee;
+  }
+  
+  return null;
+};
+
+// Set employee password
+export const setEmployeePassword = (employeeId: string, password: string): void => {
+  const employees = getEmployees();
+  const employeeIndex = employees.findIndex(emp => emp.id === employeeId);
+  
+  if (employeeIndex !== -1) {
+    employees[employeeIndex].password = password;
+    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
+  }
 };
 
 // Add a new time record
@@ -87,4 +150,38 @@ export const getTimeRecords = (): TimeRecord[] => {
 export const getTimeRecordsForEmployee = (employeeId: string): TimeRecord[] => {
   const records = getTimeRecords();
   return records.filter(record => record.employeeId === employeeId);
+};
+
+// Get time records for all employees
+export const getAllEmployeesTimeRecords = (): TimeRecord[] => {
+  return getTimeRecords();
+};
+
+// Export time records to CSV format
+export const exportTimeRecordsToCSV = (): string => {
+  const records = getTimeRecords();
+  const employees = getEmployees();
+  
+  // Create a map of employee IDs to names for quick lookup
+  const employeeMap = new Map<string, string>();
+  employees.forEach(emp => employeeMap.set(emp.id, emp.name));
+  
+  // CSV header
+  let csv = 'Employee Name,Employee ID,Clock In,Clock Out,Location,Total Duration (hours),Break Duration (hours)\n';
+  
+  // Add records to CSV
+  records.forEach(record => {
+    const employeeName = employeeMap.get(record.employeeId) || 'Unknown';
+    const clockIn = record.clockInTime.toLocaleString();
+    const clockOut = record.clockOutTime ? record.clockOutTime.toLocaleString() : 'Still Active';
+    const totalDurationHours = (record.totalWorkDuration / 3600).toFixed(2);
+    
+    // Calculate total break time
+    const totalBreakTime = record.breakEntries.reduce((total, entry) => total + entry.duration, 0);
+    const totalBreakHours = (totalBreakTime / 3600).toFixed(2);
+    
+    csv += `"${employeeName}","${record.employeeId}","${clockIn}","${clockOut}","${record.location}","${totalDurationHours}","${totalBreakHours}"\n`;
+  });
+  
+  return csv;
 };

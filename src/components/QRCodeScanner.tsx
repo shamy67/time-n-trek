@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { addEmployee, setCurrentEmployee } from '@/services/employeeService';
+import { addEmployee, setCurrentEmployee, initializeAdmin } from '@/services/employeeService';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Copy, ArrowRight, Scan } from 'lucide-react';
+import { Copy, ArrowRight, Scan, Lock } from 'lucide-react';
 
 interface QRCodeScannerProps {
   onLogin?: () => void;
@@ -17,9 +17,15 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
   const [employeeName, setEmployeeName] = useState('');
   const [employeeEmail, setEmployeeEmail] = useState('');
   const [employeeId, setEmployeeId] = useState('');
+  const [employeePassword, setEmployeePassword] = useState('');
   const [qrValue, setQrValue] = useState('');
   const [manualCode, setManualCode] = useState('');
   const navigate = useNavigate();
+
+  // Initialize admin account
+  useEffect(() => {
+    initializeAdmin();
+  }, []);
 
   // Check if URL contains employee data
   useEffect(() => {
@@ -68,8 +74,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
   };
 
   const handleGenerateQR = () => {
-    if (!employeeName.trim() || !employeeEmail.trim()) {
-      toast.error('Please enter both name and email');
+    if (!employeeName.trim() || !employeeEmail.trim() || !employeePassword.trim()) {
+      toast.error('Please enter name, email, and password');
       return;
     }
 
@@ -81,6 +87,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
       id: newEmployeeId,
       name: employeeName,
       email: employeeEmail,
+      password: employeePassword,
       joinedAt: new Date()
     };
     
@@ -160,6 +167,15 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
               onChange={(e) => setEmployeeEmail(e.target.value)}
               placeholder="Enter employee email"
               type="email"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Password</label>
+            <Input 
+              value={employeePassword}
+              onChange={(e) => setEmployeePassword(e.target.value)}
+              placeholder="Enter password for the employee"
+              type="password"
             />
           </div>
           <Button
