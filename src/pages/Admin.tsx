@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   getEmployees, 
@@ -22,7 +23,10 @@ import {
   Employee,
   TimeRecord
 } from '@/services/employeeService';
-import { FileDown, Users, Clock, Calendar } from 'lucide-react';
+import { FileDown, Users, Clock, Calendar, UserCog, MailPlus } from 'lucide-react';
+import { AddUserDialog } from '@/components/AddUserDialog';
+import { ManageUsers } from '@/components/ManageUsers';
+import { ManageInvitations } from '@/components/ManageInvitations';
 
 interface EmployeeStats {
   id: string;
@@ -147,88 +151,126 @@ const Admin = () => {
       </header>
 
       <main className="flex-grow container mx-auto px-4 py-6 space-y-6">
-        <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Employee Overview</h2>
-            <p className="text-muted-foreground">Manage your workforce and track time records</p>
+        <Tabs defaultValue="overview" className="w-full">
+          <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-semibold">Admin Control Panel</h2>
+              <p className="text-muted-foreground">Manage your workforce, track time records, and system settings</p>
+            </div>
+            
+            <div className="flex gap-2">
+              <TabsList>
+                <TabsTrigger value="overview">
+                  <Clock className="mr-2 h-4 w-4" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="users">
+                  <UserCog className="mr-2 h-4 w-4" />
+                  Users
+                </TabsTrigger>
+                <TabsTrigger value="invitations">
+                  <MailPlus className="mr-2 h-4 w-4" />
+                  Invitations
+                </TabsTrigger>
+              </TabsList>
+            </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={handleExportToExcel} className="flex items-center">
-              <FileDown className="mr-2 h-4 w-4" />
-              Export to Excel
-            </Button>
-          </div>
-        </div>
-        
-        <Separator className="my-4" />
-        
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center">
-            <Users className="mr-2 h-5 w-5 text-primary" />
-            <h3 className="text-lg font-medium">Employees ({employeeStats.length})</h3>
-          </div>
+          <Separator className="my-4" />
           
-          <div className="w-full max-w-xs">
-            <Input
-              placeholder="Search employees..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full"
-            />
-          </div>
-        </div>
-        
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead className="text-right">
-                  <div className="flex items-center justify-end">
-                    <Clock className="mr-1 h-4 w-4" />
-                    Hours
-                  </div>
-                </TableHead>
-                <TableHead className="text-right">
-                  <div className="flex items-center justify-end">
-                    <Calendar className="mr-1 h-4 w-4" />
-                    Days
-                  </div>
-                </TableHead>
-                <TableHead>Last Activity</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEmployees.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    No employees found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredEmployees.map((employee) => (
-                  <TableRow key={employee.id}>
-                    <TableCell className="font-medium">{employee.name}</TableCell>
-                    <TableCell className="text-right">{formatHours(employee.totalHours)}h</TableCell>
-                    <TableCell className="text-right">{employee.totalDays}</TableCell>
-                    <TableCell>{formatDate(employee.lastActivity)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleViewEmployeeDetails(employee.id)}
-                      >
-                        View Details
-                      </Button>
-                    </TableCell>
+          <TabsContent value="overview" className="space-y-6">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center">
+                <Users className="mr-2 h-5 w-5 text-primary" />
+                <h3 className="text-lg font-medium">Employees ({employeeStats.length})</h3>
+              </div>
+              
+              <div className="flex gap-2">
+                <div className="w-full max-w-xs">
+                  <Input
+                    placeholder="Search employees..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <Button onClick={handleExportToExcel} className="flex items-center">
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+              </div>
+            </div>
+            
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead className="text-right">
+                      <div className="flex items-center justify-end">
+                        <Clock className="mr-1 h-4 w-4" />
+                        Hours
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <div className="flex items-center justify-end">
+                        <Calendar className="mr-1 h-4 w-4" />
+                        Days
+                      </div>
+                    </TableHead>
+                    <TableHead>Last Activity</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredEmployees.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        No employees found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredEmployees.map((employee) => (
+                      <TableRow key={employee.id}>
+                        <TableCell className="font-medium">{employee.name}</TableCell>
+                        <TableCell className="text-right">{formatHours(employee.totalHours)}h</TableCell>
+                        <TableCell className="text-right">{employee.totalDays}</TableCell>
+                        <TableCell>{formatDate(employee.lastActivity)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleViewEmployeeDetails(employee.id)}
+                          >
+                            View Details
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="users" className="space-y-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">User Management</h3>
+              <AddUserDialog />
+            </div>
+            
+            <ManageUsers />
+          </TabsContent>
+          
+          <TabsContent value="invitations" className="space-y-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">Invitation Management</h3>
+              <AddUserDialog />
+            </div>
+            
+            <ManageInvitations />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <footer className="bg-white py-4 border-t">

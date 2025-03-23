@@ -24,6 +24,7 @@ export interface TimeRecord {
 const EMPLOYEES_KEY = 'timetrack_employees';
 const TIME_RECORDS_KEY = 'timetrack_records';
 const CURRENT_USER_KEY = 'timetrack_current_user';
+const INVITATIONS_KEY = 'timetrack_invitations';
 
 // Get all employees
 export const getEmployees = (): Employee[] => {
@@ -196,4 +197,132 @@ export const exportTimeRecordsToCSV = (): string => {
   });
   
   return csv;
+};
+
+// Delete an employee by ID
+export const deleteEmployee = (employeeId: string): boolean => {
+  const employees = getEmployees();
+  const initialLength = employees.length;
+  const filteredEmployees = employees.filter(emp => emp.id !== employeeId);
+  
+  if (filteredEmployees.length < initialLength) {
+    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(filteredEmployees));
+    return true;
+  }
+  
+  return false;
+};
+
+// Grant admin privileges to an employee
+export const makeAdmin = (employeeId: string): boolean => {
+  const employees = getEmployees();
+  const employeeIndex = employees.findIndex(emp => emp.id === employeeId);
+  
+  if (employeeIndex !== -1) {
+    employees[employeeIndex].isAdmin = true;
+    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
+    return true;
+  }
+  
+  return false;
+};
+
+// Remove admin privileges from an employee
+export const removeAdmin = (employeeId: string): boolean => {
+  const employees = getEmployees();
+  const employeeIndex = employees.findIndex(emp => emp.id === employeeId);
+  
+  if (employeeIndex !== -1 && employeeId !== 'admin') { // Prevent removing admin from original admin
+    employees[employeeIndex].isAdmin = false;
+    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
+    return true;
+  }
+  
+  return false;
+};
+
+// Interface for invitation
+export interface Invitation {
+  id: string;
+  email: string;
+  name: string;
+  isAdmin: boolean;
+  createdAt: Date;
+  token: string;
+}
+
+// Save an invitation
+export const saveInvitation = (invitation: Invitation): void => {
+  const invitations = getInvitations();
+  invitations.push(invitation);
+  localStorage.setItem(INVITATIONS_KEY, JSON.stringify(invitations));
+};
+
+// Get all invitations
+export const getInvitations = (): Invitation[] => {
+  const storedData = localStorage.getItem(INVITATIONS_KEY);
+  const invitations = storedData ? JSON.parse(storedData) : [];
+  
+  // Convert date strings back to Date objects
+  return invitations.map((invitation: any) => ({
+    ...invitation,
+    createdAt: new Date(invitation.createdAt)
+  }));
+};
+
+// Delete an invitation
+export const deleteInvitation = (invitationId: string): boolean => {
+  const invitations = getInvitations();
+  const initialLength = invitations.length;
+  const filteredInvitations = invitations.filter(inv => inv.id !== invitationId);
+  
+  if (filteredInvitations.length < initialLength) {
+    localStorage.setItem(INVITATIONS_KEY, JSON.stringify(filteredInvitations));
+    return true;
+  }
+  
+  return false;
+};
+
+// Verify if an invitation token is valid
+export const verifyInvitationToken = (token: string): Invitation | null => {
+  const invitations = getInvitations();
+  const invitation = invitations.find(inv => inv.token === token);
+  
+  return invitation || null;
+};
+
+// Create an employee from an invitation and delete the invitation
+export const registerFromInvitation = (token: string, password: string): Employee | null => {
+  const invitation = verifyInvitationToken(token);
+  
+  if (invitation) {
+    // Generate a unique ID for the employee
+    const id = `emp_${Date.now().toString(36)}`;
+    
+    const newEmployee: Employee = {
+      id,
+      name: invitation.name,
+      email: invitation.email,
+      joinedAt: new Date(),
+      password,
+      isAdmin: invitation.isAdmin
+    };
+    
+    addEmployee(newEmployee);
+    deleteInvitation(invitation.id);
+    
+    return newEmployee;
+  }
+  
+  return null;
+};
+
+// Mock function to simulate sending an email invitation
+export const sendInvitationEmail = (invitation: Invitation): boolean => {
+  // In a real application, this would send an actual email
+  // For now, we'll just log to console and return true to simulate success
+  console.log('Sending invitation email to:', invitation.email);
+  console.log('Invitation link:', `${window.location.origin}/register?token=${invitation.token}`);
+  return true;
 };
