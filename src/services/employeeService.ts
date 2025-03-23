@@ -67,7 +67,7 @@ export const initializeAdmin = (): void => {
     const adminEmployee: Employee = {
       id: 'admin',
       name: 'Administrator',
-      email: 'admin@timetrack.com',
+      email: 'admin',
       joinedAt: new Date(),
       password: 'admin',
       isAdmin: true
@@ -81,6 +81,12 @@ export const initializeAdmin = (): void => {
 export const getEmployeeById = (id: string): Employee | undefined => {
   const employees = getEmployees();
   return employees.find(employee => employee.id === id);
+};
+
+// Get employee by email
+export const getEmployeeByEmail = (email: string): Employee | undefined => {
+  const employees = getEmployees();
+  return employees.find(employee => employee.email.toLowerCase() === email.toLowerCase());
 };
 
 // Set current logged in employee
@@ -97,9 +103,15 @@ export const getCurrentEmployee = (): Employee | null => {
   return employee || null;
 };
 
-// Login with credentials
-export const loginWithCredentials = (id: string, password: string): Employee | null => {
-  const employee = getEmployeeById(id);
+// Login with credentials (ID/email and password)
+export const loginWithCredentials = (idOrEmail: string, password: string): Employee | null => {
+  // First try to find by ID
+  let employee = getEmployeeById(idOrEmail);
+  
+  // If not found by ID, try by email
+  if (!employee) {
+    employee = getEmployeeByEmail(idOrEmail);
+  }
   
   if (employee && employee.password === password) {
     setCurrentEmployee(employee.id);
