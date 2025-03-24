@@ -1,6 +1,8 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/database.types';
+import { Json } from '@/integrations/supabase/types';
 
 // Flag to determine whether to use Supabase or local storage
 const useSupabase = true; // We're connected to Supabase now
@@ -475,9 +477,11 @@ export const getTimeRecordsForEmployee = async (employeeId: string): Promise<Tim
         employeeId: record.employee_id,
         clockInTime: new Date(record.clock_in_time),
         clockOutTime: record.clock_out_time ? new Date(record.clock_out_time) : new Date(),
-        location: record.location,
-        totalWorkDuration: record.total_work_duration,
-        breakEntries: record.break_entries
+        location: record.location || '',
+        totalWorkDuration: record.total_work_duration || 0,
+        // Convert breakEntries from Json to array if it's not already an array
+        breakEntries: Array.isArray(record.break_entries) ? record.break_entries : 
+                      (record.break_entries ? JSON.parse(JSON.stringify(record.break_entries)) : [])
       })) : [];
     } else {
       // Get time records from local storage
@@ -509,9 +513,11 @@ export const getAllEmployeesTimeRecords = async (): Promise<TimeRecord[]> => {
         employeeId: record.employee_id,
         clockInTime: new Date(record.clock_in_time),
         clockOutTime: record.clock_out_time ? new Date(record.clock_out_time) : new Date(),
-        location: record.location,
-        totalWorkDuration: record.total_work_duration,
-        breakEntries: record.break_entries
+        location: record.location || '',
+        totalWorkDuration: record.total_work_duration || 0,
+        // Convert breakEntries from Json to array if it's not already an array
+        breakEntries: Array.isArray(record.break_entries) ? record.break_entries : 
+                      (record.break_entries ? JSON.parse(JSON.stringify(record.break_entries)) : [])
       })) : [];
     } else {
       // Get all time records from local storage
