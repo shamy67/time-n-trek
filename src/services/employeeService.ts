@@ -1,5 +1,7 @@
 
 import { BreakEntry } from '@/hooks/useTimer';
+import { supabase, EmployeeDB, TimeRecordDB, InvitationDB } from '@/lib/supabase';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface Employee {
   id: string;
@@ -8,6 +10,7 @@ export interface Employee {
   joinedAt: Date;
   password?: string;
   isAdmin?: boolean;
+  authId?: string;
 }
 
 export interface TimeRecord {
@@ -20,98 +23,205 @@ export interface TimeRecord {
   breakEntries: BreakEntry[];
 }
 
-// Local storage keys
-const EMPLOYEES_KEY = 'timetrack_employees';
-const TIME_RECORDS_KEY = 'timetrack_records';
-const CURRENT_USER_KEY = 'timetrack_current_user';
-const INVITATIONS_KEY = 'timetrack_invitations';
+// Helper functions to convert between frontend and database models
+const convertToEmployeeModel = (dbEmployee: EmployeeDB): Employee => {
+  return {
+    id: dbEmployee.id,
+    name: dbEmployee.name,
+    email: dbEmployee.email,
+    joinedAt: new Date(dbEmployee.joined_at),
+    isAdmin: dbEmployee.is_admin,
+    authId: dbEmployee.auth_id
+  };
+};
+
+const convertToEmployeeDB = (employee: Employee): EmployeeDB => {
+  return {
+    id: employee.id,
+    name: employee.name,
+    email: employee.email,
+    joined_at: employee.joinedAt.toISOString(),
+    is_admin: employee.isAdmin || false,
+    auth_id: employee.authId
+  };
+};
+
+const convertToTimeRecordModel = (dbRecord: TimeRecordDB): TimeRecord => {
+  return {
+    id: dbRecord.id,
+    employeeId: dbRecord.employee_id,
+    clockInTime: new Date(dbRecord.clock_in_time),
+    clockOutTime: dbRecord.clock_out_time ? new Date(dbRecord.clock_out_time) : undefined,
+    location: dbRecord.location,
+    totalWorkDuration: dbRecord.total_work_duration,
+    breakEntries: dbRecord.break_entries.map((entry: any) => ({
+      ...entry,
+      startTime: new Date(entry.startTime),
+      endTime: entry.endTime ? new Date(entry.endTime) : undefined
+    }))
+  };
+};
+
+const convertToTimeRecordDB = (record: TimeRecord): TimeRecordDB => {
+  return {
+    id: record.id,
+    employee_id: record.employeeId,
+    clock_in_time: record.clockInTime.toISOString(),
+    clock_out_time: record.clockOutTime ? record.clockOutTime.toISOString() : undefined,
+    location: record.location,
+    total_work_duration: record.totalWorkDuration,
+    break_entries: record.breakEntries.map(entry => ({
+      ...entry,
+      startTime: entry.startTime.toISOString(),
+      endTime: entry.endTime ? entry.endTime.toISOString() : undefined
+    }))
+  };
+};
+
+// Session management - Store current user ID
+let currentEmployeeId: string | null = null;
 
 // Get all employees
-export const getEmployees = (): Employee[] => {
-  const storedData = localStorage.getItem(EMPLOYEES_KEY);
-  return storedData ? JSON.parse(storedData) : [];
+export const getEmployees = async (): Promise<Employee[]> => {
+  const { data, error } = await supabase
+    .from('employees')
+    .select('*');
+  
+  if (error) {
+    console.error('Error fetching employees:', error);
+    return [];
+  }
+  
+  return data.map(convertToEmployeeModel);
 };
 
 // Add a new employee
-export const addEmployee = (employee: Employee): Employee => {
-  const employees = getEmployees();
-  
+export const addEmployee = async (employee: Employee): Promise<Employee> => {
   // Check if admin exists already, if not and this is the first employee, make it admin
-  const adminExists = employees.some(emp => emp.isAdmin);
-  if (!adminExists && employee.id === 'admin') {
+  const { count } = await supabase
+    .from('employees')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_admin', true);
+  
+  if (count === 0 && employee.id === 'admin') {
     employee.isAdmin = true;
   }
   
+  const dbEmployee = convertToEmployeeDB(employee);
+  
   // Check if employee already exists
-  const existingEmployeeIndex = employees.findIndex(emp => emp.id === employee.id);
-  if (existingEmployeeIndex !== -1) {
+  const { data: existingEmployee } = await supabase
+    .from('employees')
+    .select('*')
+    .eq('id', employee.id)
+    .single();
+  
+  if (existingEmployee) {
     // Update existing employee
-    employees[existingEmployeeIndex] = {
-      ...employees[existingEmployeeIndex],
-      ...employee
-    };
+    const { error } = await supabase
+      .from('employees')
+      .update(dbEmployee)
+      .eq('id', employee.id);
+    
+    if (error) {
+      console.error('Error updating employee:', error);
+      throw error;
+    }
   } else {
     // Add new employee
-    employees.push(employee);
+    const { error } = await supabase
+      .from('employees')
+      .insert(dbEmployee);
+    
+    if (error) {
+      console.error('Error adding employee:', error);
+      throw error;
+    }
   }
   
-  localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
   return employee;
 };
 
 // Initialize admin account if it doesn't exist
-export const initializeAdmin = (): void => {
-  const employees = getEmployees();
-  const adminExists = employees.some(emp => emp.id === 'admin');
+export const initializeAdmin = async (): Promise<void> => {
+  const { data } = await supabase
+    .from('employees')
+    .select('*')
+    .eq('id', 'admin')
+    .single();
   
-  if (!adminExists) {
+  if (!data) {
     const adminEmployee: Employee = {
       id: 'admin',
       name: 'Administrator',
       email: 'admin',
       joinedAt: new Date(),
-      password: 'admin',
+      password: 'admin', // In real app, use Supabase Auth
       isAdmin: true
     };
     
-    addEmployee(adminEmployee);
+    await addEmployee(adminEmployee);
   }
 };
 
 // Get employee by ID
-export const getEmployeeById = (id: string): Employee | undefined => {
-  const employees = getEmployees();
-  return employees.find(employee => employee.id === id);
+export const getEmployeeById = async (id: string): Promise<Employee | undefined> => {
+  const { data, error } = await supabase
+    .from('employees')
+    .select('*')
+    .eq('id', id)
+    .single();
+  
+  if (error || !data) {
+    console.error('Error fetching employee by ID:', error);
+    return undefined;
+  }
+  
+  return convertToEmployeeModel(data);
 };
 
 // Get employee by email
-export const getEmployeeByEmail = (email: string): Employee | undefined => {
-  const employees = getEmployees();
-  return employees.find(employee => employee.email.toLowerCase() === email.toLowerCase());
+export const getEmployeeByEmail = async (email: string): Promise<Employee | undefined> => {
+  const { data, error } = await supabase
+    .from('employees')
+    .select('*')
+    .ilike('email', email)
+    .single();
+  
+  if (error || !data) {
+    console.error('Error fetching employee by email:', error);
+    return undefined;
+  }
+  
+  return convertToEmployeeModel(data);
 };
 
 // Set current logged in employee
 export const setCurrentEmployee = (employeeId: string): void => {
-  localStorage.setItem(CURRENT_USER_KEY, employeeId);
+  currentEmployeeId = employeeId;
+  localStorage.setItem('timetrack_current_user', employeeId); // Keep for compatibility
 };
 
 // Get current logged in employee
-export const getCurrentEmployee = (): Employee | null => {
-  const employeeId = localStorage.getItem(CURRENT_USER_KEY);
-  if (!employeeId) return null;
+export const getCurrentEmployee = async (): Promise<Employee | null> => {
+  if (!currentEmployeeId) {
+    currentEmployeeId = localStorage.getItem('timetrack_current_user');
+  }
   
-  const employee = getEmployeeById(employeeId);
+  if (!currentEmployeeId) return null;
+  
+  const employee = await getEmployeeById(currentEmployeeId);
   return employee || null;
 };
 
 // Login with credentials (ID/email and password)
-export const loginWithCredentials = (idOrEmail: string, password: string): Employee | null => {
+export const loginWithCredentials = async (idOrEmail: string, password: string): Promise<Employee | null> => {
   // First try to find by ID
-  let employee = getEmployeeById(idOrEmail);
+  let employee = await getEmployeeById(idOrEmail);
   
   // If not found by ID, try by email
   if (!employee) {
-    employee = getEmployeeByEmail(idOrEmail);
+    employee = await getEmployeeByEmail(idOrEmail);
   }
   
   if (employee && employee.password === password) {
@@ -123,57 +233,73 @@ export const loginWithCredentials = (idOrEmail: string, password: string): Emplo
 };
 
 // Set employee password
-export const setEmployeePassword = (employeeId: string, password: string): void => {
-  const employees = getEmployees();
-  const employeeIndex = employees.findIndex(emp => emp.id === employeeId);
+export const setEmployeePassword = async (employeeId: string, password: string): Promise<void> => {
+  // In a real app, you would use Supabase Auth instead
+  const { error } = await supabase
+    .from('employees')
+    .update({ password })
+    .eq('id', employeeId);
   
-  if (employeeIndex !== -1) {
-    employees[employeeIndex].password = password;
-    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
+  if (error) {
+    console.error('Error setting employee password:', error);
+    throw error;
   }
 };
 
 // Add a new time record
-export const addTimeRecord = (record: TimeRecord): TimeRecord => {
-  const records = getTimeRecords();
-  records.push(record);
-  localStorage.setItem(TIME_RECORDS_KEY, JSON.stringify(records));
+export const addTimeRecord = async (record: TimeRecord): Promise<TimeRecord> => {
+  const dbRecord = convertToTimeRecordDB(record);
+  
+  const { error } = await supabase
+    .from('time_records')
+    .insert(dbRecord);
+  
+  if (error) {
+    console.error('Error adding time record:', error);
+    throw error;
+  }
+  
   return record;
 };
 
 // Get all time records
-export const getTimeRecords = (): TimeRecord[] => {
-  const storedData = localStorage.getItem(TIME_RECORDS_KEY);
-  const records = storedData ? JSON.parse(storedData) : [];
+export const getTimeRecords = async (): Promise<TimeRecord[]> => {
+  const { data, error } = await supabase
+    .from('time_records')
+    .select('*');
   
-  // Convert date strings back to Date objects
-  return records.map((record: any) => ({
-    ...record,
-    clockInTime: new Date(record.clockInTime),
-    clockOutTime: record.clockOutTime ? new Date(record.clockOutTime) : undefined,
-    breakEntries: record.breakEntries.map((entry: any) => ({
-      ...entry,
-      startTime: new Date(entry.startTime),
-      endTime: entry.endTime ? new Date(entry.endTime) : undefined
-    }))
-  }));
+  if (error) {
+    console.error('Error fetching time records:', error);
+    return [];
+  }
+  
+  return data.map(convertToTimeRecordModel);
 };
 
 // Get time records for a specific employee
-export const getTimeRecordsForEmployee = (employeeId: string): TimeRecord[] => {
-  const records = getTimeRecords();
-  return records.filter(record => record.employeeId === employeeId);
+export const getTimeRecordsForEmployee = async (employeeId: string): Promise<TimeRecord[]> => {
+  const { data, error } = await supabase
+    .from('time_records')
+    .select('*')
+    .eq('employee_id', employeeId);
+  
+  if (error) {
+    console.error('Error fetching time records for employee:', error);
+    return [];
+  }
+  
+  return data.map(convertToTimeRecordModel);
 };
 
 // Get time records for all employees
-export const getAllEmployeesTimeRecords = (): TimeRecord[] => {
+export const getAllEmployeesTimeRecords = async (): Promise<TimeRecord[]> => {
   return getTimeRecords();
 };
 
 // Export time records to CSV format
-export const exportTimeRecordsToCSV = (): string => {
-  const records = getTimeRecords();
-  const employees = getEmployees();
+export const exportTimeRecordsToCSV = async (): Promise<string> => {
+  const records = await getTimeRecords();
+  const employees = await getEmployees();
   
   // Create a map of employee IDs to names for quick lookup
   const employeeMap = new Map<string, string>();
@@ -200,45 +326,53 @@ export const exportTimeRecordsToCSV = (): string => {
 };
 
 // Delete an employee by ID
-export const deleteEmployee = (employeeId: string): boolean => {
-  const employees = getEmployees();
-  const initialLength = employees.length;
-  const filteredEmployees = employees.filter(emp => emp.id !== employeeId);
+export const deleteEmployee = async (employeeId: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('employees')
+    .delete()
+    .eq('id', employeeId);
   
-  if (filteredEmployees.length < initialLength) {
-    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(filteredEmployees));
-    return true;
+  if (error) {
+    console.error('Error deleting employee:', error);
+    return false;
   }
   
-  return false;
+  return true;
 };
 
 // Grant admin privileges to an employee
-export const makeAdmin = (employeeId: string): boolean => {
-  const employees = getEmployees();
-  const employeeIndex = employees.findIndex(emp => emp.id === employeeId);
+export const makeAdmin = async (employeeId: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('employees')
+    .update({ is_admin: true })
+    .eq('id', employeeId);
   
-  if (employeeIndex !== -1) {
-    employees[employeeIndex].isAdmin = true;
-    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
-    return true;
+  if (error) {
+    console.error('Error making employee admin:', error);
+    return false;
   }
   
-  return false;
+  return true;
 };
 
 // Remove admin privileges from an employee
-export const removeAdmin = (employeeId: string): boolean => {
-  const employees = getEmployees();
-  const employeeIndex = employees.findIndex(emp => emp.id === employeeId);
-  
-  if (employeeIndex !== -1 && employeeId !== 'admin') { // Prevent removing admin from original admin
-    employees[employeeIndex].isAdmin = false;
-    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
-    return true;
+export const removeAdmin = async (employeeId: string): Promise<boolean> => {
+  if (employeeId === 'admin') {
+    // Prevent removing admin from original admin
+    return false;
   }
   
-  return false;
+  const { error } = await supabase
+    .from('employees')
+    .update({ is_admin: false })
+    .eq('id', employeeId);
+  
+  if (error) {
+    console.error('Error removing admin privileges:', error);
+    return false;
+  }
+  
+  return true;
 };
 
 // Interface for invitation
@@ -252,49 +386,88 @@ export interface Invitation {
 }
 
 // Save an invitation
-export const saveInvitation = (invitation: Invitation): void => {
-  const invitations = getInvitations();
-  invitations.push(invitation);
-  localStorage.setItem(INVITATIONS_KEY, JSON.stringify(invitations));
+export const saveInvitation = async (invitation: Invitation): Promise<void> => {
+  const dbInvitation: InvitationDB = {
+    id: invitation.id,
+    email: invitation.email,
+    name: invitation.name,
+    is_admin: invitation.isAdmin,
+    created_at: invitation.createdAt.toISOString(),
+    token: invitation.token
+  };
+  
+  const { error } = await supabase
+    .from('invitations')
+    .insert(dbInvitation);
+  
+  if (error) {
+    console.error('Error saving invitation:', error);
+    throw error;
+  }
 };
 
 // Get all invitations
-export const getInvitations = (): Invitation[] => {
-  const storedData = localStorage.getItem(INVITATIONS_KEY);
-  const invitations = storedData ? JSON.parse(storedData) : [];
+export const getInvitations = async (): Promise<Invitation[]> => {
+  const { data, error } = await supabase
+    .from('invitations')
+    .select('*');
   
-  // Convert date strings back to Date objects
-  return invitations.map((invitation: any) => ({
-    ...invitation,
-    createdAt: new Date(invitation.createdAt)
+  if (error) {
+    console.error('Error fetching invitations:', error);
+    return [];
+  }
+  
+  return data.map((inv: InvitationDB) => ({
+    id: inv.id,
+    email: inv.email,
+    name: inv.name,
+    isAdmin: inv.is_admin,
+    createdAt: new Date(inv.created_at),
+    token: inv.token
   }));
 };
 
 // Delete an invitation
-export const deleteInvitation = (invitationId: string): boolean => {
-  const invitations = getInvitations();
-  const initialLength = invitations.length;
-  const filteredInvitations = invitations.filter(inv => inv.id !== invitationId);
+export const deleteInvitation = async (invitationId: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('invitations')
+    .delete()
+    .eq('id', invitationId);
   
-  if (filteredInvitations.length < initialLength) {
-    localStorage.setItem(INVITATIONS_KEY, JSON.stringify(filteredInvitations));
-    return true;
+  if (error) {
+    console.error('Error deleting invitation:', error);
+    return false;
   }
   
-  return false;
+  return true;
 };
 
 // Verify if an invitation token is valid
-export const verifyInvitationToken = (token: string): Invitation | null => {
-  const invitations = getInvitations();
-  const invitation = invitations.find(inv => inv.token === token);
+export const verifyInvitationToken = async (token: string): Promise<Invitation | null> => {
+  const { data, error } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('token', token)
+    .single();
   
-  return invitation || null;
+  if (error || !data) {
+    console.error('Error verifying invitation token:', error);
+    return null;
+  }
+  
+  return {
+    id: data.id,
+    email: data.email,
+    name: data.name,
+    isAdmin: data.is_admin,
+    createdAt: new Date(data.created_at),
+    token: data.token
+  };
 };
 
 // Create an employee from an invitation and delete the invitation
-export const registerFromInvitation = (token: string, password: string): Employee | null => {
-  const invitation = verifyInvitationToken(token);
+export const registerFromInvitation = async (token: string, password: string): Promise<Employee | null> => {
+  const invitation = await verifyInvitationToken(token);
   
   if (invitation) {
     // Generate a unique ID for the employee
@@ -309,8 +482,8 @@ export const registerFromInvitation = (token: string, password: string): Employe
       isAdmin: invitation.isAdmin
     };
     
-    addEmployee(newEmployee);
-    deleteInvitation(invitation.id);
+    await addEmployee(newEmployee);
+    await deleteInvitation(invitation.id);
     
     return newEmployee;
   }
