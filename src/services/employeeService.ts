@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
+import { Tables } from '@/integrations/supabase/database.types';
 
 // Flag to determine whether to use Supabase or local storage
 const useSupabase = true; // We're connected to Supabase now
@@ -80,7 +81,13 @@ export const initializeAdmin = async () => {
         // Create admin in Supabase
         const { error: insertError } = await supabase
           .from('employees')
-          .insert([{ id: 'admin', name: 'Administrator', email: 'admin', password: 'password', isAdmin: true }]);
+          .insert([{ 
+            id: 'admin', 
+            name: 'Administrator', 
+            email: 'admin', 
+            password: 'password', 
+            is_admin: true 
+          }]);
 
         if (insertError) {
           console.error('Supabase error creating admin:', insertError);
@@ -120,7 +127,16 @@ export const loginWithCredentials = async (email: string, password: string): Pro
         return null;
       }
 
-      return data ? { ...data, joinedAt: data.joinedAt ? new Date(data.joinedAt) : undefined } : null;
+      if (data) {
+        return {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          isAdmin: data.is_admin,
+          joinedAt: data.joined_at ? new Date(data.joined_at) : undefined
+        };
+      }
+      return null;
     } else {
       // Check in local storage
       const employees = getEmployeesFromLocalStorage();
@@ -154,7 +170,16 @@ export const getCurrentEmployee = async (): Promise<Employee | null> => {
         return null;
       }
 
-      return data ? { ...data, joinedAt: data.joinedAt ? new Date(data.joinedAt) : undefined } : null;
+      if (data) {
+        return {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          isAdmin: data.is_admin,
+          joinedAt: data.joined_at ? new Date(data.joined_at) : undefined
+        };
+      }
+      return null;
     } else {
       // Check in local storage
       const employees = getEmployeesFromLocalStorage();
@@ -179,7 +204,14 @@ export const addEmployee = async (employee: Employee): Promise<void> => {
       // Insert employee into Supabase
       const { error } = await supabase
         .from('employees')
-        .insert([employee]);
+        .insert([{
+          id: employee.id,
+          name: employee.name,
+          email: employee.email,
+          password: employee.password,
+          is_admin: employee.isAdmin || false,
+          joined_at: employee.joinedAt ? employee.joinedAt.toISOString() : new Date().toISOString()
+        }]);
 
       if (error) {
         console.error('Supabase error adding employee:', error);
@@ -210,9 +242,11 @@ export const getEmployees = async (): Promise<Employee[]> => {
       }
 
       return data ? data.map(emp => ({
-        ...emp,
-        joinedAt: emp.joined_at ? new Date(emp.joined_at) : undefined,
-        isAdmin: emp.is_admin
+        id: emp.id,
+        name: emp.name,
+        email: emp.email,
+        isAdmin: emp.is_admin,
+        joinedAt: emp.joined_at ? new Date(emp.joined_at) : undefined
       })) : [];
     } else {
       // Get employees from local storage
@@ -240,11 +274,16 @@ export const getEmployeeById = async (id: string): Promise<Employee | null> => {
         return null;
       }
 
-      return data ? {
-        ...data,
-        joinedAt: data.joined_at ? new Date(data.joined_at) : undefined,
-        isAdmin: data.is_admin
-      } : null;
+      if (data) {
+        return {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          isAdmin: data.is_admin,
+          joinedAt: data.joined_at ? new Date(data.joined_at) : undefined
+        };
+      }
+      return null;
     } else {
       // Check in local storage
       const employees = getEmployeesFromLocalStorage();
@@ -396,10 +435,10 @@ export const addTimeRecord = async (timeRecord: TimeRecord): Promise<void> => {
           id: timeRecord.id,
           employee_id: timeRecord.employeeId,
           clock_in_time: timeRecord.clockInTime.toISOString(),
-          clock_out_time: timeRecord.clockOutTime.toISOString(),
+          clock_out_time: timeRecord.clockOutTime ? timeRecord.clockOutTime.toISOString() : null,
           location: timeRecord.location,
           total_work_duration: timeRecord.totalWorkDuration,
-          break_entries: JSON.stringify(timeRecord.breakEntries)
+          break_entries: timeRecord.breakEntries
         }]);
 
       if (error) {
@@ -435,10 +474,10 @@ export const getTimeRecordsForEmployee = async (employeeId: string): Promise<Tim
         id: record.id,
         employeeId: record.employee_id,
         clockInTime: new Date(record.clock_in_time),
-        clockOutTime: new Date(record.clock_out_time),
+        clockOutTime: record.clock_out_time ? new Date(record.clock_out_time) : new Date(),
         location: record.location,
         totalWorkDuration: record.total_work_duration,
-        breakEntries: JSON.parse(record.break_entries)
+        breakEntries: record.break_entries
       })) : [];
     } else {
       // Get time records from local storage
@@ -469,10 +508,10 @@ export const getAllEmployeesTimeRecords = async (): Promise<TimeRecord[]> => {
         id: record.id,
         employeeId: record.employee_id,
         clockInTime: new Date(record.clock_in_time),
-        clockOutTime: new Date(record.clock_out_time),
+        clockOutTime: record.clock_out_time ? new Date(record.clock_out_time) : new Date(),
         location: record.location,
         totalWorkDuration: record.total_work_duration,
-        breakEntries: JSON.parse(record.break_entries)
+        breakEntries: record.break_entries
       })) : [];
     } else {
       // Get all time records from local storage

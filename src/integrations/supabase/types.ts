@@ -9,7 +9,98 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      employees: {
+        Row: {
+          email: string
+          id: string
+          is_admin: boolean | null
+          joined_at: string | null
+          name: string
+          password: string | null
+        }
+        Insert: {
+          email: string
+          id: string
+          is_admin?: boolean | null
+          joined_at?: string | null
+          name: string
+          password?: string | null
+        }
+        Update: {
+          email?: string
+          id?: string
+          is_admin?: boolean | null
+          joined_at?: string | null
+          name?: string
+          password?: string | null
+        }
+        Relationships: []
+      }
+      invitations: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          is_admin: boolean | null
+          name: string
+          token: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          is_admin?: boolean | null
+          name: string
+          token: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          is_admin?: boolean | null
+          name?: string
+          token?: string
+        }
+        Relationships: []
+      }
+      time_records: {
+        Row: {
+          break_entries: Json | null
+          clock_in_time: string
+          clock_out_time: string | null
+          employee_id: string | null
+          id: string
+          location: string | null
+          total_work_duration: number | null
+        }
+        Insert: {
+          break_entries?: Json | null
+          clock_in_time: string
+          clock_out_time?: string | null
+          employee_id?: string | null
+          id: string
+          location?: string | null
+          total_work_duration?: number | null
+        }
+        Update: {
+          break_entries?: Json | null
+          clock_in_time?: string
+          clock_out_time?: string | null
+          employee_id?: string | null
+          id?: string
+          location?: string | null
+          total_work_duration?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_records_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
