@@ -14,19 +14,21 @@ import './App.css';
 
 function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/employee/:id" element={<EmployeeDetails />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster />
-        <SonnerToaster position="top-center" />
-      </Router>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+      <div className="app-container">
+        <Router>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/employee/:id" element={<EmployeeDetails />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Toaster />
+          <SonnerToaster position="top-center" />
+        </Router>
+      </div>
     </ThemeProvider>
   );
 }

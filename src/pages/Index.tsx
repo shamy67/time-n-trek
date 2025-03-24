@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { AlertCircle, Info, History as HistoryIcon, User } from 'lucide-react';
+import { AlertCircle, Info, History as HistoryIcon, User, Clock, Menu } from 'lucide-react';
 import { useTimer, BreakEntry } from '@/hooks/useTimer';
 import { useLocation } from '@/hooks/useLocation';
 import TimeStatus from '@/components/TimeStatus';
@@ -33,7 +32,6 @@ const Index = () => {
   const timer = useTimer();
   const location = useLocation();
   
-  // Check if user is logged in
   useEffect(() => {
     const checkLogin = async () => {
       setLoading(true);
@@ -91,7 +89,6 @@ const Index = () => {
           breakEntries: result.breaks
         };
         
-        // Save the time record
         await addTimeRecord(timeRecord);
         
         setSummaryData({
@@ -139,8 +136,8 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-        <p>Loading...</p>
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+        <div className="animate-pulse-slow">Loading...</div>
       </div>
     );
   }
@@ -150,46 +147,50 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="w-full bg-white shadow-soft z-10">
-        <div className="container max-w-md mx-auto px-4 py-5">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-semibold">TimeTrack</h1>
-            
-            <div className="flex items-center space-x-2">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => navigate('/history')}
-                title="View History"
-              >
-                <HistoryIcon className="h-5 w-5" />
-              </Button>
-              
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => navigate('/login')}
-                title="Profile"
-              >
-                <User className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-white flex flex-col">
+      <header className="app-header">
+        <div className="flex items-center">
+          <img 
+            src="/lovable-uploads/fd15a914-326d-4b02-84d9-11611f8e0903.png" 
+            alt="CULTIV BUREAU Logo" 
+            className="h-10" 
+          />
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate('/history')}
+            title="View History"
+            className="text-black hover:bg-gray-100"
+          >
+            <HistoryIcon className="h-5 w-5" />
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate('/login')}
+            title="Profile"
+            className="text-black hover:bg-gray-100"
+          >
+            <User className="h-5 w-5" />
+          </Button>
         </div>
       </header>
 
-      <main className="flex-grow container max-w-md mx-auto px-4 py-6 space-y-6">
+      <main className="flex-grow app-content">
         {!showSummary ? (
           <>
-            <div className="w-full bg-secondary rounded-xl p-3 animate-enter animate-delay-100">
+            <div className="w-full border-2 border-black p-4 mb-6">
               <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
-                  <User className="h-5 w-5 text-primary" />
+                <div className="w-10 h-10 flex items-center justify-center mr-3 bg-black text-white">
+                  <User className="h-5 w-5" />
                 </div>
-                <div>
-                  <h3 className="font-medium">{currentEmployee.name}</h3>
-                  <p className="text-sm text-muted-foreground">{currentEmployee.email}</p>
+                <div className="text-left">
+                  <h3 className="font-bold">{currentEmployee.name}</h3>
+                  <p className="text-sm">{currentEmployee.email}</p>
                 </div>
               </div>
             </div>
@@ -202,7 +203,7 @@ const Index = () => {
             />
             
             {location.error && (
-              <Alert variant="destructive" className="animate-enter animate-delay-100">
+              <Alert variant="destructive" className="border-2 border-black my-4 bg-white">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   {location.error}
@@ -220,12 +221,12 @@ const Index = () => {
             />
             
             {status === 'break' && timer.currentBreak && (
-              <div className="p-5 bg-warning-light rounded-xl border border-warning/20 animate-enter">
+              <div className="p-5 border-2 border-black my-4">
                 <div className="flex items-center">
-                  <Info className="w-5 h-5 text-warning mr-2" />
-                  <h3 className="font-medium text-warning">On Break: {timer.currentBreak.type}</h3>
+                  <Info className="w-5 h-5 mr-2" />
+                  <h3 className="font-bold">On Break: {timer.currentBreak.type}</h3>
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm">
                   Your break started at {timer.currentBreak.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
@@ -242,31 +243,30 @@ const Index = () => {
                 breakEntries={summaryData.breakEntries}
               />
               
-              <div className="flex flex-col space-y-2">
-                <Button
+              <div className="flex flex-col space-y-4">
+                <button
                   onClick={() => navigate('/history')}
-                  className="w-full"
+                  className="cultiv-button w-full"
                 >
-                  <HistoryIcon className="mr-2 h-4 w-4" />
+                  <HistoryIcon className="mr-2 h-4 w-4 inline" />
                   View History
-                </Button>
+                </button>
                 
-                <Button
+                <button
                   onClick={resetView}
-                  className="w-full"
-                  variant="secondary"
+                  className="cultiv-button-outline w-full"
                 >
                   Back to Clock
-                </Button>
+                </button>
               </div>
             </div>
           )
         )}
       </main>
 
-      <footer className="bg-white py-4 border-t">
-        <div className="container max-w-md mx-auto px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} TimeTrack • Employee Management
+      <footer className="bg-black text-white py-4">
+        <div className="container mx-auto px-4 text-center text-sm">
+          &copy; {new Date().getFullYear()} CULTIV BUREAU • Time Management
         </div>
       </footer>
     </div>
