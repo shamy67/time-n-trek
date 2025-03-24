@@ -12,7 +12,7 @@ import QRCodeScanner from '@/components/QRCodeScanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle, Mail, LockKeyhole, UserPlus } from 'lucide-react';
+import { CheckCircle, Mail, LockKeyhole, UserPlus, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Login = () => {
