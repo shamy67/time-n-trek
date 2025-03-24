@@ -1,18 +1,43 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentEmployee, getTimeRecordsForEmployee } from '@/services/employeeService';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Clock, Calendar, MapPin } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
+import { TimeRecord } from '@/services/employeeService';
 
 const History = () => {
   const navigate = useNavigate();
-  const currentEmployee = getCurrentEmployee();
-  const timeRecords = currentEmployee 
-    ? getTimeRecordsForEmployee(currentEmployee.id)
-    : [];
+  const [currentEmployee, setCurrentEmployee] = useState<any>(null);
+  const [timeRecords, setTimeRecords] = useState<TimeRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const employee = await getCurrentEmployee();
+      
+      if (!employee) {
+        navigate('/login');
+        return;
+      }
+      
+      setCurrentEmployee(employee);
+      
+      try {
+        const records = await getTimeRecordsForEmployee(employee.id);
+        setTimeRecords(records);
+      } catch (error) {
+        console.error('Error loading time records:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [navigate]);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
@@ -28,9 +53,12 @@ const History = () => {
     return `${hours}h ${minutes}m`;
   };
 
-  if (!currentEmployee) {
-    navigate('/login');
-    return null;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <p>Loading time records...</p>
+      </div>
+    );
   }
 
   return (

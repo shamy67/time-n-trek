@@ -16,37 +16,57 @@ import {
   getEmployeeById, 
   getCurrentEmployee, 
   getTimeRecordsForEmployee,
-  TimeRecord
+  TimeRecord,
+  Employee
 } from '@/services/employeeService';
 import { ArrowLeft, Clock, Calendar, MapPin, Coffee } from 'lucide-react';
 
 const EmployeeDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const currentEmployee = getCurrentEmployee();
-  const [employee, setEmployee] = useState<any>(null);
+  const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
+  const [employee, setEmployee] = useState<Employee | null>(null);
   const [timeRecords, setTimeRecords] = useState<TimeRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // Redirect if not admin
-    if (!currentEmployee || !currentEmployee.isAdmin) {
-      navigate('/login');
-      toast.error('Admin access required');
-      return;
-    }
-    
-    if (id) {
-      const employeeData = getEmployeeById(id);
-      if (employeeData) {
-        setEmployee(employeeData);
-        const records = getTimeRecordsForEmployee(id);
-        setTimeRecords(records);
-      } else {
-        toast.error('Employee not found');
-        navigate('/admin');
+    const loadData = async () => {
+      setLoading(true);
+      
+      // Get current employee (for checking admin status)
+      const loggedInEmployee = await getCurrentEmployee();
+      setCurrentEmployee(loggedInEmployee);
+      
+      // Redirect if not admin
+      if (!loggedInEmployee || !loggedInEmployee.isAdmin) {
+        navigate('/login');
+        toast.error('Admin access required');
+        return;
       }
-    }
-  }, [id, currentEmployee, navigate]);
+      
+      if (id) {
+        try {
+          const employeeData = await getEmployeeById(id);
+          if (employeeData) {
+            setEmployee(employeeData);
+            const records = await getTimeRecordsForEmployee(id);
+            setTimeRecords(records);
+          } else {
+            toast.error('Employee not found');
+            navigate('/admin');
+          }
+        } catch (error) {
+          console.error('Error loading employee data:', error);
+          toast.error('Failed to load employee data');
+          navigate('/admin');
+        }
+      }
+      
+      setLoading(false);
+    };
+    
+    loadData();
+  }, [id, navigate]);
   
   const formatDate = (date: Date) => {
     return date.toLocaleDateString([], { 
@@ -66,6 +86,14 @@ const EmployeeDetails = () => {
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
   };
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <p>Loading employee details...</p>
+      </div>
+    );
+  }
   
   if (!employee) {
     return null;

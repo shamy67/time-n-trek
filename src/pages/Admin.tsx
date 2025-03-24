@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Table, 
   TableBody, 
-  TableCaption, 
   TableCell, 
   TableHead, 
   TableHeader, 
@@ -38,66 +37,85 @@ interface EmployeeStats {
 
 const Admin = () => {
   const navigate = useNavigate();
-  const currentEmployee = getCurrentEmployee();
+  const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const [employeeStats, setEmployeeStats] = useState<EmployeeStats[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // Redirect if not admin
-    if (!currentEmployee || !currentEmployee.isAdmin) {
-      navigate('/login');
-      toast.error('Admin access required');
-      return;
-    }
-    
-    calculateEmployeeStats();
-  }, [currentEmployee, navigate]);
-  
-  const calculateEmployeeStats = () => {
-    const employees = getEmployees().filter(emp => !emp.isAdmin);
-    const timeRecords = getAllEmployeesTimeRecords();
-    
-    const stats: EmployeeStats[] = employees.map(employee => {
-      const employeeRecords = timeRecords.filter(record => record.employeeId === employee.id);
+    const loadData = async () => {
+      setLoading(true);
       
-      // Calculate total hours worked
-      const totalSeconds = employeeRecords.reduce((total, record) => total + record.totalWorkDuration, 0);
-      const totalHours = totalSeconds / 3600;
+      // Get current employee
+      const employee = await getCurrentEmployee();
+      setCurrentEmployee(employee);
       
-      // Calculate unique days worked
-      const uniqueDays = new Set();
-      employeeRecords.forEach(record => {
-        const date = new Date(record.clockInTime).toDateString();
-        uniqueDays.add(date);
-      });
-      
-      // Find last activity
-      let lastActivity: Date | undefined = undefined;
-      if (employeeRecords.length > 0) {
-        const sortedRecords = [...employeeRecords].sort((a, b) => {
-          const dateA = a.clockOutTime || a.clockInTime;
-          const dateB = b.clockOutTime || b.clockInTime;
-          return dateB.getTime() - dateA.getTime();
-        });
-        
-        lastActivity = sortedRecords[0].clockOutTime || sortedRecords[0].clockInTime;
+      // Redirect if not admin
+      if (!employee || !employee.isAdmin) {
+        navigate('/login');
+        toast.error('Admin access required');
+        return;
       }
       
-      return {
-        id: employee.id,
-        name: employee.name,
-        totalHours: totalHours,
-        totalDays: uniqueDays.size,
-        lastActivity
-      };
-    });
+      await calculateEmployeeStats();
+      setLoading(false);
+    };
     
-    setEmployeeStats(stats);
+    loadData();
+  }, [navigate]);
+  
+  const calculateEmployeeStats = async () => {
+    try {
+      const employees = await getEmployees();
+      const nonAdminEmployees = employees.filter(emp => !emp.isAdmin);
+      const timeRecords = await getAllEmployeesTimeRecords();
+      
+      const stats: EmployeeStats[] = await Promise.all(nonAdminEmployees.map(async (employee) => {
+        const employeeRecords = timeRecords.filter(record => record.employeeId === employee.id);
+        
+        // Calculate total hours worked
+        const totalSeconds = employeeRecords.reduce((total, record) => total + record.totalWorkDuration, 0);
+        const totalHours = totalSeconds / 3600;
+        
+        // Calculate unique days worked
+        const uniqueDays = new Set();
+        employeeRecords.forEach(record => {
+          const date = new Date(record.clockInTime).toDateString();
+          uniqueDays.add(date);
+        });
+        
+        // Find last activity
+        let lastActivity: Date | undefined = undefined;
+        if (employeeRecords.length > 0) {
+          const sortedRecords = [...employeeRecords].sort((a, b) => {
+            const dateA = a.clockOutTime || a.clockInTime;
+            const dateB = b.clockOutTime || b.clockInTime;
+            return dateB.getTime() - dateA.getTime();
+          });
+          
+          lastActivity = sortedRecords[0].clockOutTime || sortedRecords[0].clockInTime;
+        }
+        
+        return {
+          id: employee.id,
+          name: employee.name,
+          totalHours: totalHours,
+          totalDays: uniqueDays.size,
+          lastActivity
+        };
+      }));
+      
+      setEmployeeStats(stats);
+    } catch (error) {
+      console.error("Error calculating employee stats:", error);
+      toast.error("Failed to load employee statistics");
+    }
   };
   
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     try {
-      const csvContent = exportTimeRecordsToCSV();
+      setLoading(true);
+      const csvContent = await exportTimeRecordsToCSV();
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       
@@ -113,6 +131,8 @@ const Admin = () => {
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Failed to export data');
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -133,6 +153,14 @@ const Admin = () => {
     if (!date) return 'Never';
     return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
   };
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <p>Loading admin dashboard...</p>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-background flex flex-col">

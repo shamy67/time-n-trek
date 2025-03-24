@@ -9,7 +9,7 @@ import ClockControls from '@/components/ClockControls';
 import TimeSummary from '@/components/TimeSummary';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from '@/components/ui/button';
-import { getCurrentEmployee, addTimeRecord } from '@/services/employeeService';
+import { getCurrentEmployee, addTimeRecord, Employee } from '@/services/employeeService';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -26,18 +26,30 @@ const Index = () => {
     totalWorkDuration: number;
     breakEntries: BreakEntry[];
   } | null>(null);
+  const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
   const timer = useTimer();
   const location = useLocation();
-  const currentEmployee = getCurrentEmployee();
-
+  
   // Check if user is logged in
   useEffect(() => {
-    if (!currentEmployee) {
-      navigate('/login');
-    }
-  }, [currentEmployee, navigate]);
+    const checkLogin = async () => {
+      setLoading(true);
+      const employee = await getCurrentEmployee();
+      
+      if (!employee) {
+        navigate('/login');
+      } else {
+        setCurrentEmployee(employee);
+      }
+      
+      setLoading(false);
+    };
+    
+    checkLogin();
+  }, [navigate]);
 
   const handleClockIn = async () => {
     try {
@@ -63,7 +75,7 @@ const Index = () => {
     }
   };
 
-  const handleClockOut = () => {
+  const handleClockOut = async () => {
     try {
       const result = timer.stopTimer();
       setStatus('inactive');
@@ -80,7 +92,7 @@ const Index = () => {
         };
         
         // Save the time record
-        addTimeRecord(timeRecord);
+        await addTimeRecord(timeRecord);
         
         setSummaryData({
           clockInTime: result.startTime,
@@ -124,6 +136,14 @@ const Index = () => {
     setShowSummary(false);
     setSummaryData(null);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   if (!currentEmployee) {
     return null; // Will redirect to login

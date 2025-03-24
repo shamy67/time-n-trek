@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { addEmployee, setCurrentEmployee, initializeAdmin } from '@/services/employeeService';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Copy, ArrowRight, Scan, Lock } from 'lucide-react';
+import { Copy, ArrowRight, User, Lock } from 'lucide-react';
 
 interface QRCodeScannerProps {
   onLogin?: () => void;
@@ -20,51 +20,65 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
   const [employeePassword, setEmployeePassword] = useState('');
   const [qrValue, setQrValue] = useState('');
   const [manualCode, setManualCode] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   // Initialize admin account
   useEffect(() => {
-    initializeAdmin();
+    const init = async () => {
+      await initializeAdmin();
+    };
+    init();
   }, []);
 
   // Check if URL contains employee data
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const encodedData = url.searchParams.get('employeeData');
-    
-    if (encodedData) {
-      try {
-        // Decode and parse the employee data
-        const decodedData = decodeURIComponent(encodedData);
-        const employeeData = JSON.parse(decodedData);
+    const checkUrl = async () => {
+      const url = new URL(window.location.href);
+      const encodedData = url.searchParams.get('employeeData');
+      
+      if (encodedData) {
+        setLoading(true);
         
-        if (employeeData.id && employeeData.name) {
-          // Set current employee
-          setCurrentEmployee(employeeData.id);
+        try {
+          // Decode and parse the employee data
+          const decodedData = decodeURIComponent(encodedData);
+          const employeeData = JSON.parse(decodedData);
           
-          // Add employee if not exists
-          try {
-            addEmployee(employeeData);
-          } catch (e) {
-            // Employee might already exist
+          if (employeeData.id && employeeData.name) {
+            // Set current employee
+            setCurrentEmployee(employeeData.id);
+            
+            // Add employee if not exists
+            try {
+              await addEmployee(employeeData);
+            } catch (e) {
+              // Employee might already exist
+              console.warn('Error adding employee, may already exist:', e);
+            }
+            
+            toast.success('Login successful');
+            
+            // Clear the URL parameter without reloading
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            // Navigate to dashboard or call onLogin
+            if (onLogin) {
+              onLogin();
+            } else {
+              navigate('/');
+            }
           }
-          
-          toast.success('Login successful');
-          
-          // Clear the URL parameter without reloading
-          window.history.replaceState({}, document.title, window.location.pathname);
-          
-          // Navigate to dashboard or call onLogin
-          if (onLogin) {
-            onLogin();
-          } else {
-            navigate('/');
-          }
+        } catch (error) {
+          console.error('QR code error:', error);
+          toast.error('Invalid QR code data');
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        toast.error('Invalid QR code data');
       }
-    }
+    };
+    
+    checkUrl();
   }, [navigate, onLogin]);
 
   // Generate a unique ID for the employee
@@ -73,36 +87,45 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
            Math.random().toString(36).substring(2, 15);
   };
 
-  const handleGenerateQR = () => {
+  const handleGenerateQR = async () => {
     if (!employeeName.trim() || !employeeEmail.trim() || !employeePassword.trim()) {
       toast.error('Please enter name, email, and password');
       return;
     }
 
-    const newEmployeeId = generateEmployeeId();
-    setEmployeeId(newEmployeeId);
-    
-    // Create a QR code value with employee information
-    const employeeData = {
-      id: newEmployeeId,
-      name: employeeName,
-      email: employeeEmail,
-      password: employeePassword,
-      joinedAt: new Date()
-    };
-    
-    // Save employee to storage
-    addEmployee(employeeData);
-    
-    // Generate QR value with app URL and employee data
-    const baseUrl = window.location.origin;
-    const loginUrl = `${baseUrl}/login?employeeData=${encodeURIComponent(JSON.stringify(employeeData))}`;
-    setQrValue(loginUrl);
-    setIsGenerating(true);
-    
-    toast.success('QR code generated successfully', {
-      description: 'Now you can share this with the employee'
-    });
+    try {
+      setLoading(true);
+      
+      const newEmployeeId = generateEmployeeId();
+      setEmployeeId(newEmployeeId);
+      
+      // Create a QR code value with employee information
+      const employeeData = {
+        id: newEmployeeId,
+        name: employeeName,
+        email: employeeEmail,
+        password: employeePassword,
+        joinedAt: new Date()
+      };
+      
+      // Save employee to storage
+      await addEmployee(employeeData);
+      
+      // Generate QR value with app URL and employee data
+      const baseUrl = window.location.origin;
+      const loginUrl = `${baseUrl}/login?employeeData=${encodeURIComponent(JSON.stringify(employeeData))}`;
+      setQrValue(loginUrl);
+      setIsGenerating(true);
+      
+      toast.success('QR code generated successfully', {
+        description: 'Now you can share this with the employee'
+      });
+    } catch (error) {
+      console.error('QR generation error:', error);
+      toast.error('Failed to generate QR code');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCopyLink = () => {
@@ -112,12 +135,14 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
     }
   };
 
-  const handleJoinWithCode = () => {
+  const handleJoinWithCode = async () => {
     try {
       if (!manualCode.trim()) {
         toast.error('Please enter a valid code');
         return;
       }
+      
+      setLoading(true);
       
       const employeeData = JSON.parse(manualCode);
       if (!employeeData.id || !employeeData.name) {
@@ -130,9 +155,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
       
       // Add employee if not exists
       try {
-        addEmployee(employeeData);
+        await addEmployee(employeeData);
       } catch (e) {
         // Employee might already exist
+        console.warn('Error adding employee, may already exist:', e);
       }
       
       toast.success('Login successful');
@@ -143,7 +169,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
         navigate('/');
       }
     } catch (error) {
+      console.error('Join code error:', error);
       toast.error('Failed to parse employee code');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -181,6 +210,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
           <Button
             onClick={handleGenerateQR}
             className="w-full mt-2"
+            disabled={loading}
           >
             Generate QR Code
           </Button>
@@ -204,6 +234,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
               onClick={handleJoinWithCode}
               className="w-full"
               variant="secondary"
+              disabled={loading}
             >
               <ArrowRight className="mr-2 h-4 w-4" />
               Join with Code

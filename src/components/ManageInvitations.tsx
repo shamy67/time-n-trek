@@ -43,7 +43,7 @@ export function ManageInvitations() {
   const handleDeleteInvitation = async (invitationId: string) => {
     try {
       await deleteInvitation(invitationId);
-      loadInvitations();
+      await loadInvitations();
       toast.success('Invitation deleted successfully');
     } catch (error) {
       console.error('Error deleting invitation:', error);

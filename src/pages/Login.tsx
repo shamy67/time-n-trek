@@ -5,21 +5,23 @@ import {
   getCurrentEmployee, 
   initializeAdmin, 
   loginWithCredentials,
-  addEmployee
+  addEmployee,
+  Employee
 } from '@/services/employeeService';
 import QRCodeScanner from '@/components/QRCodeScanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle, Lock, User, Mail, LockKeyhole, UserPlus } from 'lucide-react';
+import { CheckCircle, Mail, LockKeyhole, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const currentEmployee = getCurrentEmployee();
-  const [isLoggedIn, setIsLoggedIn] = useState(!!currentEmployee);
+  const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState<'qr' | 'login' | 'register'>('qr');
+  const [loading, setLoading] = useState(true);
   
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -31,62 +33,64 @@ const Login = () => {
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
 
-  // Initialize admin account
+  // Initialize admin account and check login status
   useEffect(() => {
-    initializeAdmin();
-  }, []);
-
-  // Check for URL parameters on load
-  useEffect(() => {
-    // If user is already logged in, no need to process URL parameters
-    if (isLoggedIn) return;
+    const init = async () => {
+      setLoading(true);
+      await initializeAdmin();
+      
+      const employee = await getCurrentEmployee();
+      if (employee) {
+        setCurrentEmployee(employee);
+        setIsLoggedIn(true);
+      }
+      
+      setLoading(false);
+    };
     
-    // The QRCodeScanner component will handle the actual URL parameter processing
-  }, [isLoggedIn]);
+    init();
+  }, []);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
     navigate('/');
   };
 
-  const handleCredentialLogin = () => {
+  const handleCredentialLogin = async () => {
     if (!loginEmail.trim() || !loginPassword.trim()) {
       toast.error('Please enter both email and password');
       return;
     }
 
-    // Special case for admin
-    if (loginEmail.trim().toLowerCase() === 'admin' && loginPassword === 'admin') {
-      const employee = loginWithCredentials('admin', 'admin');
-      if (employee) {
-        setIsLoggedIn(true);
-        navigate('/admin');
-        toast.success('Welcome, Administrator');
-        return;
-      }
-    }
-
-    // Try to find employee by email
-    const employees = JSON.parse(localStorage.getItem('timetrack_employees') || '[]');
-    const employee = employees.find((emp: any) => emp.email.toLowerCase() === loginEmail.toLowerCase());
-    
-    if (employee && employee.password === loginPassword) {
-      setIsLoggedIn(true);
-      localStorage.setItem('timetrack_current_user', employee.id);
+    try {
+      setLoading(true);
       
-      if (employee.isAdmin) {
-        navigate('/admin');
-        toast.success('Welcome, Administrator');
+      // Try to login with provided credentials
+      const employee = await loginWithCredentials(loginEmail, loginPassword);
+      
+      if (employee) {
+        setCurrentEmployee(employee);
+        setIsLoggedIn(true);
+        
+        if (employee.isAdmin) {
+          navigate('/admin');
+          toast.success('Welcome, Administrator');
+        } else {
+          navigate('/');
+          toast.success('Login successful');
+        }
       } else {
-        navigate('/');
-        toast.success('Login successful');
+        toast.error('Invalid credentials');
       }
-    } else {
-      toast.error('Invalid credentials');
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     // Validate form
     if (!registerName.trim() || !registerEmail.trim() || !registerPassword.trim()) {
       toast.error('Please fill all required fields');
@@ -98,32 +102,46 @@ const Login = () => {
       return;
     }
 
-    // Generate a unique ID
-    const newEmployeeId = Math.random().toString(36).substring(2, 15) + 
-                          Math.random().toString(36).substring(2, 15);
-    
-    // Create new employee
-    const newEmployee = {
-      id: newEmployeeId,
-      name: registerName,
-      email: registerEmail,
-      password: registerPassword,
-      joinedAt: new Date()
-    };
-
     try {
+      setLoading(true);
+      
+      // Generate a unique ID
+      const newEmployeeId = Math.random().toString(36).substring(2, 15) + 
+                            Math.random().toString(36).substring(2, 15);
+      
+      // Create new employee
+      const newEmployee = {
+        id: newEmployeeId,
+        name: registerName,
+        email: registerEmail,
+        password: registerPassword,
+        joinedAt: new Date()
+      };
+
       // Add employee
-      addEmployee(newEmployee);
+      await addEmployee(newEmployee);
       
       // Auto login
       localStorage.setItem('timetrack_current_user', newEmployeeId);
+      setCurrentEmployee(newEmployee);
       setIsLoggedIn(true);
       navigate('/');
       toast.success('Registration successful');
     } catch (error) {
+      console.error('Registration error:', error);
       toast.error('Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -155,6 +173,7 @@ const Login = () => {
               onClick={() => {
                 localStorage.removeItem('timetrack_current_user');
                 setIsLoggedIn(false);
+                setCurrentEmployee(null);
               }}
               className="w-full"
               variant="outline"
@@ -232,6 +251,7 @@ const Login = () => {
                 <Button
                   onClick={handleCredentialLogin}
                   className="w-full"
+                  disabled={loading}
                 >
                   Login
                 </Button>
@@ -318,6 +338,7 @@ const Login = () => {
                 <Button
                   onClick={handleRegister}
                   className="w-full"
+                  disabled={loading}
                 >
                   <UserPlus className="mr-2 h-4 w-4" />
                   Register
