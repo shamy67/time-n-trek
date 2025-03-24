@@ -690,9 +690,9 @@ export const checkEmailExists = async (email: string): Promise<boolean> => {
       
       return !!data;
     } else {
-      // Check in local storage
-      const employees = getEmployeesFromLocalStorage();
-      return employees.some(emp => emp.email === email);
+      // Check in local storage - if we're not using Supabase
+      // Just check if admin email matches
+      return email === 'admin@example.com';
     }
   } catch (error) {
     console.error('Error checking if email exists:', error);
