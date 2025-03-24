@@ -1,6 +1,6 @@
 
 import { BreakEntry } from '@/hooks/useTimer';
-import { supabase, EmployeeDB, TimeRecordDB, InvitationDB } from '@/lib/supabase';
+import { supabase, EmployeeDB, TimeRecordDB, InvitationDB, isSupabaseConfigured } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface Employee {
@@ -83,117 +83,184 @@ let currentEmployeeId: string | null = null;
 
 // Get all employees
 export const getEmployees = async (): Promise<Employee[]> => {
-  const { data, error } = await supabase
-    .from('employees')
-    .select('*');
-  
-  if (error) {
-    console.error('Error fetching employees:', error);
+  if (!isSupabaseConfigured()) {
+    // Fallback to mock data when Supabase is not configured
+    return [
+      {
+        id: 'admin',
+        name: 'Administrator',
+        email: 'admin@example.com',
+        joinedAt: new Date(),
+        isAdmin: true
+      }
+    ];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*');
+    
+    if (error) {
+      console.error('Error fetching employees:', error);
+      return [];
+    }
+    
+    return data.map(convertToEmployeeModel);
+  } catch (err) {
+    console.error('Failed to fetch employees:', err);
     return [];
   }
-  
-  return data.map(convertToEmployeeModel);
 };
 
 // Add a new employee
 export const addEmployee = async (employee: Employee): Promise<Employee> => {
-  // Check if admin exists already, if not and this is the first employee, make it admin
-  const { count } = await supabase
-    .from('employees')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_admin', true);
-  
-  if (count === 0 && employee.id === 'admin') {
-    employee.isAdmin = true;
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase not configured, employee not saved to database');
+    return employee;
   }
-  
-  const dbEmployee = convertToEmployeeDB(employee);
-  
-  // Check if employee already exists
-  const { data: existingEmployee } = await supabase
-    .from('employees')
-    .select('*')
-    .eq('id', employee.id)
-    .single();
-  
-  if (existingEmployee) {
-    // Update existing employee
-    const { error } = await supabase
+
+  try {
+    // Check if admin exists already, if not and this is the first employee, make it admin
+    const { count } = await supabase
       .from('employees')
-      .update(dbEmployee)
-      .eq('id', employee.id);
+      .select('*', { count: 'exact', head: true })
+      .eq('is_admin', true);
     
-    if (error) {
-      console.error('Error updating employee:', error);
-      throw error;
+    if (count === 0 && employee.id === 'admin') {
+      employee.isAdmin = true;
     }
-  } else {
-    // Add new employee
-    const { error } = await supabase
+    
+    const dbEmployee = convertToEmployeeDB(employee);
+    
+    // Check if employee already exists
+    const { data: existingEmployee } = await supabase
       .from('employees')
-      .insert(dbEmployee);
+      .select('*')
+      .eq('id', employee.id)
+      .single();
     
-    if (error) {
-      console.error('Error adding employee:', error);
-      throw error;
+    if (existingEmployee) {
+      // Update existing employee
+      const { error } = await supabase
+        .from('employees')
+        .update(dbEmployee)
+        .eq('id', employee.id);
+      
+      if (error) {
+        console.error('Error updating employee:', error);
+        throw error;
+      }
+    } else {
+      // Add new employee
+      const { error } = await supabase
+        .from('employees')
+        .insert(dbEmployee);
+      
+      if (error) {
+        console.error('Error adding employee:', error);
+        throw error;
+      }
     }
+    
+    return employee;
+  } catch (err) {
+    console.error('Failed to add/update employee:', err);
+    return employee;
   }
-  
-  return employee;
 };
 
 // Initialize admin account if it doesn't exist
 export const initializeAdmin = async (): Promise<void> => {
-  const { data } = await supabase
-    .from('employees')
-    .select('*')
-    .eq('id', 'admin')
-    .single();
-  
-  if (!data) {
-    const adminEmployee: Employee = {
-      id: 'admin',
-      name: 'Administrator',
-      email: 'admin',
-      joinedAt: new Date(),
-      password: 'admin', // In real app, use Supabase Auth
-      isAdmin: true
-    };
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase not configured, admin initialization skipped');
+    return;
+  }
+
+  try {
+    const { data } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('id', 'admin')
+      .single();
     
-    await addEmployee(adminEmployee);
+    if (!data) {
+      const adminEmployee: Employee = {
+        id: 'admin',
+        name: 'Administrator',
+        email: 'admin',
+        joinedAt: new Date(),
+        password: 'admin', // In real app, use Supabase Auth
+        isAdmin: true
+      };
+      
+      await addEmployee(adminEmployee);
+    }
+  } catch (err) {
+    console.error('Failed to initialize admin:', err);
   }
 };
 
 // Get employee by ID
-export const getEmployeeById = async (id: string): Promise<Employee | undefined> => {
-  const { data, error } = await supabase
-    .from('employees')
-    .select('*')
-    .eq('id', id)
-    .single();
-  
-  if (error || !data) {
-    console.error('Error fetching employee by ID:', error);
-    return undefined;
+export const getEmployeeById = async (id: string): Promise<Employee | null> => {
+  if (!isSupabaseConfigured()) {
+    return id === 'admin' ? {
+      id: 'admin',
+      name: 'Administrator',
+      email: 'admin@example.com',
+      joinedAt: new Date(),
+      isAdmin: true
+    } : null;
   }
-  
-  return convertToEmployeeModel(data);
+
+  try {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error || !data) {
+      console.error('Error fetching employee by ID:', error);
+      return null;
+    }
+    
+    return convertToEmployeeModel(data);
+  } catch (err) {
+    console.error('Failed to fetch employee by ID:', err);
+    return null;
+  }
 };
 
 // Get employee by email
-export const getEmployeeByEmail = async (email: string): Promise<Employee | undefined> => {
-  const { data, error } = await supabase
-    .from('employees')
-    .select('*')
-    .ilike('email', email)
-    .single();
-  
-  if (error || !data) {
-    console.error('Error fetching employee by email:', error);
-    return undefined;
+export const getEmployeeByEmail = async (email: string): Promise<Employee | null> => {
+  if (!isSupabaseConfigured()) {
+    return email === 'admin@example.com' ? {
+      id: 'admin',
+      name: 'Administrator',
+      email: 'admin@example.com',
+      joinedAt: new Date(),
+      isAdmin: true
+    } : null;
   }
-  
-  return convertToEmployeeModel(data);
+
+  try {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .ilike('email', email)
+      .single();
+    
+    if (error || !data) {
+      console.error('Error fetching employee by email:', error);
+      return null;
+    }
+    
+    return convertToEmployeeModel(data);
+  } catch (err) {
+    console.error('Failed to fetch employee by email:', err);
+    return null;
+  }
 };
 
 // Set current logged in employee
@@ -210,8 +277,7 @@ export const getCurrentEmployee = async (): Promise<Employee | null> => {
   
   if (!currentEmployeeId) return null;
   
-  const employee = await getEmployeeById(currentEmployeeId);
-  return employee || null;
+  return await getEmployeeById(currentEmployeeId);
 };
 
 // Login with credentials (ID/email and password)
@@ -234,61 +300,97 @@ export const loginWithCredentials = async (idOrEmail: string, password: string):
 
 // Set employee password
 export const setEmployeePassword = async (employeeId: string, password: string): Promise<void> => {
-  // In a real app, you would use Supabase Auth instead
-  const { error } = await supabase
-    .from('employees')
-    .update({ password })
-    .eq('id', employeeId);
-  
-  if (error) {
-    console.error('Error setting employee password:', error);
-    throw error;
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase not configured, password not updated in database');
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('employees')
+      .update({ password })
+      .eq('id', employeeId);
+    
+    if (error) {
+      console.error('Error setting employee password:', error);
+      throw error;
+    }
+  } catch (err) {
+    console.error('Failed to set employee password:', err);
   }
 };
 
 // Add a new time record
 export const addTimeRecord = async (record: TimeRecord): Promise<TimeRecord> => {
-  const dbRecord = convertToTimeRecordDB(record);
-  
-  const { error } = await supabase
-    .from('time_records')
-    .insert(dbRecord);
-  
-  if (error) {
-    console.error('Error adding time record:', error);
-    throw error;
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase not configured, time record not saved to database');
+    return record;
   }
-  
-  return record;
+
+  try {
+    const dbRecord = convertToTimeRecordDB(record);
+    
+    const { error } = await supabase
+      .from('time_records')
+      .insert(dbRecord);
+    
+    if (error) {
+      console.error('Error adding time record:', error);
+      throw error;
+    }
+    
+    return record;
+  } catch (err) {
+    console.error('Failed to add time record:', err);
+    return record;
+  }
 };
 
 // Get all time records
 export const getTimeRecords = async (): Promise<TimeRecord[]> => {
-  const { data, error } = await supabase
-    .from('time_records')
-    .select('*');
-  
-  if (error) {
-    console.error('Error fetching time records:', error);
+  if (!isSupabaseConfigured()) {
     return [];
   }
-  
-  return data.map(convertToTimeRecordModel);
+
+  try {
+    const { data, error } = await supabase
+      .from('time_records')
+      .select('*');
+    
+    if (error) {
+      console.error('Error fetching time records:', error);
+      return [];
+    }
+    
+    return data.map(convertToTimeRecordModel);
+  } catch (err) {
+    console.error('Failed to fetch time records:', err);
+    return [];
+  }
 };
 
 // Get time records for a specific employee
 export const getTimeRecordsForEmployee = async (employeeId: string): Promise<TimeRecord[]> => {
-  const { data, error } = await supabase
-    .from('time_records')
-    .select('*')
-    .eq('employee_id', employeeId);
-  
-  if (error) {
-    console.error('Error fetching time records for employee:', error);
+  if (!isSupabaseConfigured()) {
     return [];
   }
-  
-  return data.map(convertToTimeRecordModel);
+
+  try {
+    const { data, error } = await supabase
+      .from('time_records')
+      .select('*')
+      .eq('employee_id', employeeId);
+    
+    if (error) {
+      console.error('Error fetching time records for employee:', error);
+      return [];
+    }
+    
+    return data.map(convertToTimeRecordModel);
+  } catch (err) {
+    console.error('Failed to fetch time records for employee:', err);
+    return [];
+  }
 };
 
 // Get time records for all employees
@@ -298,61 +400,86 @@ export const getAllEmployeesTimeRecords = async (): Promise<TimeRecord[]> => {
 
 // Export time records to CSV format
 export const exportTimeRecordsToCSV = async (): Promise<string> => {
-  const records = await getTimeRecords();
-  const employees = await getEmployees();
-  
-  // Create a map of employee IDs to names for quick lookup
-  const employeeMap = new Map<string, string>();
-  employees.forEach(emp => employeeMap.set(emp.id, emp.name));
-  
-  // CSV header
-  let csv = 'Employee Name,Employee ID,Clock In,Clock Out,Location,Total Duration (hours),Break Duration (hours)\n';
-  
-  // Add records to CSV
-  records.forEach(record => {
-    const employeeName = employeeMap.get(record.employeeId) || 'Unknown';
-    const clockIn = record.clockInTime.toLocaleString();
-    const clockOut = record.clockOutTime ? record.clockOutTime.toLocaleString() : 'Still Active';
-    const totalDurationHours = (record.totalWorkDuration / 3600).toFixed(2);
+  try {
+    const records = await getTimeRecords();
+    const employees = await getEmployees();
     
-    // Calculate total break time
-    const totalBreakTime = record.breakEntries.reduce((total, entry) => total + entry.duration, 0);
-    const totalBreakHours = (totalBreakTime / 3600).toFixed(2);
+    // Create a map of employee IDs to names for quick lookup
+    const employeeMap = new Map<string, string>();
+    employees.forEach(emp => employeeMap.set(emp.id, emp.name));
     
-    csv += `"${employeeName}","${record.employeeId}","${clockIn}","${clockOut}","${record.location}","${totalDurationHours}","${totalBreakHours}"\n`;
-  });
-  
-  return csv;
+    // CSV header
+    let csv = 'Employee Name,Employee ID,Clock In,Clock Out,Location,Total Duration (hours),Break Duration (hours)\n';
+    
+    // Add records to CSV
+    records.forEach(record => {
+      const employeeName = employeeMap.get(record.employeeId) || 'Unknown';
+      const clockIn = record.clockInTime.toLocaleString();
+      const clockOut = record.clockOutTime ? record.clockOutTime.toLocaleString() : 'Still Active';
+      const totalDurationHours = (record.totalWorkDuration / 3600).toFixed(2);
+      
+      // Calculate total break time
+      const totalBreakTime = record.breakEntries.reduce((total, entry) => total + entry.duration, 0);
+      const totalBreakHours = (totalBreakTime / 3600).toFixed(2);
+      
+      csv += `"${employeeName}","${record.employeeId}","${clockIn}","${clockOut}","${record.location}","${totalDurationHours}","${totalBreakHours}"\n`;
+    });
+    
+    return csv;
+  } catch (err) {
+    console.error('Failed to export time records to CSV:', err);
+    return 'Error generating CSV';
+  }
 };
 
 // Delete an employee by ID
 export const deleteEmployee = async (employeeId: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('employees')
-    .delete()
-    .eq('id', employeeId);
-  
-  if (error) {
-    console.error('Error deleting employee:', error);
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase not configured, employee not deleted from database');
+    return true;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('employees')
+      .delete()
+      .eq('id', employeeId);
+    
+    if (error) {
+      console.error('Error deleting employee:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Failed to delete employee:', err);
     return false;
   }
-  
-  return true;
 };
 
 // Grant admin privileges to an employee
 export const makeAdmin = async (employeeId: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('employees')
-    .update({ is_admin: true })
-    .eq('id', employeeId);
-  
-  if (error) {
-    console.error('Error making employee admin:', error);
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase not configured, admin privileges not updated in database');
+    return true;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('employees')
+      .update({ is_admin: true })
+      .eq('id', employeeId);
+    
+    if (error) {
+      console.error('Error making employee admin:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Failed to make employee admin:', err);
     return false;
   }
-  
-  return true;
 };
 
 // Remove admin privileges from an employee
@@ -362,17 +489,27 @@ export const removeAdmin = async (employeeId: string): Promise<boolean> => {
     return false;
   }
   
-  const { error } = await supabase
-    .from('employees')
-    .update({ is_admin: false })
-    .eq('id', employeeId);
-  
-  if (error) {
-    console.error('Error removing admin privileges:', error);
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase not configured, admin privileges not updated in database');
+    return true;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('employees')
+      .update({ is_admin: false })
+      .eq('id', employeeId);
+    
+    if (error) {
+      console.error('Error removing admin privileges:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Failed to remove admin privileges:', err);
     return false;
   }
-  
-  return true;
 };
 
 // Interface for invitation
@@ -387,82 +524,119 @@ export interface Invitation {
 
 // Save an invitation
 export const saveInvitation = async (invitation: Invitation): Promise<void> => {
-  const dbInvitation: InvitationDB = {
-    id: invitation.id,
-    email: invitation.email,
-    name: invitation.name,
-    is_admin: invitation.isAdmin,
-    created_at: invitation.createdAt.toISOString(),
-    token: invitation.token
-  };
-  
-  const { error } = await supabase
-    .from('invitations')
-    .insert(dbInvitation);
-  
-  if (error) {
-    console.error('Error saving invitation:', error);
-    throw error;
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase not configured, invitation not saved to database');
+    return;
+  }
+
+  try {
+    const dbInvitation: InvitationDB = {
+      id: invitation.id,
+      email: invitation.email,
+      name: invitation.name,
+      is_admin: invitation.isAdmin,
+      created_at: invitation.createdAt.toISOString(),
+      token: invitation.token
+    };
+    
+    const { error } = await supabase
+      .from('invitations')
+      .insert(dbInvitation);
+    
+    if (error) {
+      console.error('Error saving invitation:', error);
+      throw error;
+    }
+  } catch (err) {
+    console.error('Failed to save invitation:', err);
   }
 };
 
 // Get all invitations
 export const getInvitations = async (): Promise<Invitation[]> => {
-  const { data, error } = await supabase
-    .from('invitations')
-    .select('*');
-  
-  if (error) {
-    console.error('Error fetching invitations:', error);
+  if (!isSupabaseConfigured()) {
     return [];
   }
-  
-  return data.map((inv: InvitationDB) => ({
-    id: inv.id,
-    email: inv.email,
-    name: inv.name,
-    isAdmin: inv.is_admin,
-    createdAt: new Date(inv.created_at),
-    token: inv.token
-  }));
+
+  try {
+    const { data, error } = await supabase
+      .from('invitations')
+      .select('*');
+    
+    if (error) {
+      console.error('Error fetching invitations:', error);
+      return [];
+    }
+    
+    return data.map((inv: InvitationDB) => ({
+      id: inv.id,
+      email: inv.email,
+      name: inv.name,
+      isAdmin: inv.is_admin,
+      createdAt: new Date(inv.created_at),
+      token: inv.token
+    }));
+  } catch (err) {
+    console.error('Failed to fetch invitations:', err);
+    return [];
+  }
 };
 
 // Delete an invitation
 export const deleteInvitation = async (invitationId: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('invitations')
-    .delete()
-    .eq('id', invitationId);
-  
-  if (error) {
-    console.error('Error deleting invitation:', error);
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase not configured, invitation not deleted from database');
+    return true;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('invitations')
+      .delete()
+      .eq('id', invitationId);
+    
+    if (error) {
+      console.error('Error deleting invitation:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Failed to delete invitation:', err);
     return false;
   }
-  
-  return true;
 };
 
 // Verify if an invitation token is valid
 export const verifyInvitationToken = async (token: string): Promise<Invitation | null> => {
-  const { data, error } = await supabase
-    .from('invitations')
-    .select('*')
-    .eq('token', token)
-    .single();
-  
-  if (error || !data) {
-    console.error('Error verifying invitation token:', error);
+  if (!isSupabaseConfigured()) {
     return null;
   }
-  
-  return {
-    id: data.id,
-    email: data.email,
-    name: data.name,
-    isAdmin: data.is_admin,
-    createdAt: new Date(data.created_at),
-    token: data.token
-  };
+
+  try {
+    const { data, error } = await supabase
+      .from('invitations')
+      .select('*')
+      .eq('token', token)
+      .single();
+    
+    if (error || !data) {
+      console.error('Error verifying invitation token:', error);
+      return null;
+    }
+    
+    return {
+      id: data.id,
+      email: data.email,
+      name: data.name,
+      isAdmin: data.is_admin,
+      createdAt: new Date(data.created_at),
+      token: data.token
+    };
+  } catch (err) {
+    console.error('Failed to verify invitation token:', err);
+    return null;
+  }
 };
 
 // Create an employee from an invitation and delete the invitation

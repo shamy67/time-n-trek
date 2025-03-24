@@ -30,14 +30,20 @@ export function ManageUsers() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const loadEmployees = () => {
+  const loadEmployees = async () => {
     setIsLoading(true);
-    const data = getEmployees();
-    // Filter out the main admin
-    const filteredData = data.filter(emp => emp.id !== 'admin');
-    setEmployees(filteredData);
-    setFilteredEmployees(filteredData);
-    setIsLoading(false);
+    try {
+      const data = await getEmployees();
+      // Filter out the main admin
+      const filteredData = data.filter(emp => emp.id !== 'admin');
+      setEmployees(filteredData);
+      setFilteredEmployees(filteredData);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+      toast.error('Failed to load employees');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -53,31 +59,47 @@ export function ManageUsers() {
     setFilteredEmployees(filtered);
   }, [searchTerm, employees]);
 
-  const handleDeleteEmployee = (employee: Employee) => {
+  const handleDeleteEmployee = async (employee: Employee) => {
     if (window.confirm(`Are you sure you want to delete ${employee.name}?`)) {
-      deleteEmployee(employee.id);
-      loadEmployees();
-      toast.success(`${employee.name} has been deleted`);
+      try {
+        const success = await deleteEmployee(employee.id);
+        if (success) {
+          await loadEmployees();
+          toast.success(`${employee.name} has been deleted`);
+        } else {
+          toast.error(`Failed to delete ${employee.name}`);
+        }
+      } catch (error) {
+        console.error('Error deleting employee:', error);
+        toast.error(`Failed to delete ${employee.name}`);
+      }
     }
   };
 
-  const handleToggleAdmin = (employee: Employee) => {
-    if (employee.isAdmin) {
-      // Remove admin privileges
-      if (removeAdmin(employee.id)) {
-        loadEmployees();
-        toast.success(`Admin privileges removed from ${employee.name}`);
+  const handleToggleAdmin = async (employee: Employee) => {
+    try {
+      if (employee.isAdmin) {
+        // Remove admin privileges
+        const success = await removeAdmin(employee.id);
+        if (success) {
+          await loadEmployees();
+          toast.success(`Admin privileges removed from ${employee.name}`);
+        } else {
+          toast.error(`Could not remove admin privileges from ${employee.name}`);
+        }
       } else {
-        toast.error(`Could not remove admin privileges from ${employee.name}`);
+        // Grant admin privileges
+        const success = await makeAdmin(employee.id);
+        if (success) {
+          await loadEmployees();
+          toast.success(`${employee.name} is now an admin`);
+        } else {
+          toast.error(`Could not make ${employee.name} an admin`);
+        }
       }
-    } else {
-      // Grant admin privileges
-      if (makeAdmin(employee.id)) {
-        loadEmployees();
-        toast.success(`${employee.name} is now an admin`);
-      } else {
-        toast.error(`Could not make ${employee.name} an admin`);
-      }
+    } catch (error) {
+      console.error('Error toggling admin status:', error);
+      toast.error('An error occurred while updating admin status');
     }
   };
 
@@ -111,7 +133,11 @@ export function ManageUsers() {
         </div>
       </div>
 
-      {filteredEmployees.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center p-4 border rounded-md">
+          <p className="text-muted-foreground">Loading users...</p>
+        </div>
+      ) : filteredEmployees.length === 0 ? (
         <div className="text-center p-4 border rounded-md">
           <p className="text-muted-foreground">No users found</p>
         </div>

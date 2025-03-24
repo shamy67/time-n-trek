@@ -1,14 +1,11 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize the Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Initialize the Supabase client with fallback values for development
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project-url.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase credentials. Make sure environment variables are set.');
-}
-
+// Create the Supabase client
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Database types that match our tables
@@ -38,4 +35,19 @@ export type InvitationDB = {
   is_admin: boolean;
   created_at: string;
   token: string;
+}
+
+// Helper function to check if Supabase is configured correctly
+export const isSupabaseConfigured = (): boolean => {
+  return supabaseUrl !== 'https://your-project-url.supabase.co' && 
+         supabaseKey !== 'your-anon-key' &&
+         supabaseUrl !== '' && 
+         supabaseKey !== '';
+}
+
+// Log Supabase configuration status
+console.log('Supabase configuration status:', isSupabaseConfigured() ? 'Configured' : 'Not configured');
+if (!isSupabaseConfigured()) {
+  console.warn('Supabase is not properly configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
+  console.warn('For Lovable users: Make sure to connect Supabase in your project settings and set the environment variables.');
 }

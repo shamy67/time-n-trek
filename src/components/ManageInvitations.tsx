@@ -18,11 +18,17 @@ export function ManageInvitations() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadInvitations = () => {
+  const loadInvitations = async () => {
     setIsLoading(true);
-    const data = getInvitations();
-    setInvitations(data);
-    setIsLoading(false);
+    try {
+      const data = await getInvitations();
+      setInvitations(data);
+    } catch (error) {
+      console.error('Error loading invitations:', error);
+      toast.error('Failed to load invitations');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -34,10 +40,15 @@ export function ManageInvitations() {
     toast.success(`Invitation resent to ${invitation.email}`);
   };
 
-  const handleDeleteInvitation = (invitationId: string) => {
-    deleteInvitation(invitationId);
-    loadInvitations();
-    toast.success('Invitation deleted successfully');
+  const handleDeleteInvitation = async (invitationId: string) => {
+    try {
+      await deleteInvitation(invitationId);
+      loadInvitations();
+      toast.success('Invitation deleted successfully');
+    } catch (error) {
+      console.error('Error deleting invitation:', error);
+      toast.error('Failed to delete invitation');
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -54,7 +65,11 @@ export function ManageInvitations() {
         </Button>
       </div>
 
-      {invitations.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center p-4 border rounded-md">
+          <p className="text-muted-foreground">Loading invitations...</p>
+        </div>
+      ) : invitations.length === 0 ? (
         <div className="text-center p-4 border rounded-md">
           <p className="text-muted-foreground">No pending invitations</p>
         </div>
