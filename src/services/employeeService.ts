@@ -1,4 +1,3 @@
-
 import { BreakEntry } from '@/hooks/useTimer';
 import { supabase, EmployeeDB, TimeRecordDB, InvitationDB, isSupabaseConfigured } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
@@ -672,4 +671,31 @@ export const sendInvitationEmail = (invitation: Invitation): boolean => {
   console.log('Sending invitation email to:', invitation.email);
   console.log('Invitation link:', `${window.location.origin}/register?token=${invitation.token}`);
   return true;
+};
+
+// Function to check if an email already exists in the system
+export const checkEmailExists = async (email: string): Promise<boolean> => {
+  try {
+    if (isSupabaseConfigured()) {
+      // Check in Supabase
+      const { data, error } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('email', email)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Supabase error checking email:', error);
+      }
+      
+      return !!data;
+    } else {
+      // Check in local storage
+      const employees = getEmployeesFromLocalStorage();
+      return employees.some(emp => emp.email === email);
+    }
+  } catch (error) {
+    console.error('Error checking if email exists:', error);
+    return false;
+  }
 };

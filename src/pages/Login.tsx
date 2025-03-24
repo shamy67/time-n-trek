@@ -6,12 +6,14 @@ import {
   initializeAdmin, 
   loginWithCredentials,
   addEmployee,
-  Employee
+  Employee,
+  checkEmailExists
 } from '@/services/employeeService';
 import QRCodeScanner from '@/components/QRCodeScanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Mail, LockKeyhole, UserPlus, User } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -32,6 +34,8 @@ const Login = () => {
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [passwordFeedback, setPasswordFeedback] = useState('');
 
   // Initialize admin account and check login status
   useEffect(() => {
@@ -54,6 +58,41 @@ const Login = () => {
   const handleLogin = () => {
     setIsLoggedIn(true);
     navigate('/');
+  };
+
+  // Check password strength
+  const checkPasswordStrength = (password: string) => {
+    // Start with a base score of 0
+    let strength = 0;
+    let feedback = '';
+
+    if (password.length === 0) {
+      setPasswordStrength(0);
+      setPasswordFeedback('');
+      return;
+    }
+
+    // Add points for length
+    if (password.length > 6) strength += 20;
+    if (password.length > 10) strength += 10;
+
+    // Add points for complexity
+    if (/[a-z]/.test(password)) strength += 10; // Has lowercase
+    if (/[A-Z]/.test(password)) strength += 20; // Has uppercase
+    if (/[0-9]/.test(password)) strength += 20; // Has number
+    if (/[^A-Za-z0-9]/.test(password)) strength += 20; // Has special char
+    
+    // Provide feedback based on strength score
+    if (strength < 40) {
+      feedback = 'Weak - Add uppercase, numbers, and special characters';
+    } else if (strength < 70) {
+      feedback = 'Medium - Add more variety to make your password stronger';
+    } else {
+      feedback = 'Strong password';
+    }
+
+    setPasswordStrength(strength);
+    setPasswordFeedback(feedback);
   };
 
   const handleCredentialLogin = async () => {
@@ -102,8 +141,22 @@ const Login = () => {
       return;
     }
 
+    // Check password strength
+    if (passwordStrength < 60) {
+      toast.error('Password is too weak. Please include uppercase, numbers, and special characters.');
+      return;
+    }
+
     try {
       setLoading(true);
+      
+      // Check if email already exists
+      const emailExists = await checkEmailExists(registerEmail);
+      if (emailExists) {
+        toast.error('This email is already registered');
+        setLoading(false);
+        return;
+      }
       
       // Generate a unique ID
       const newEmployeeId = Math.random().toString(36).substring(2, 15) + 
@@ -311,11 +364,24 @@ const Login = () => {
                       <Input 
                         id="register-password"
                         value={registerPassword}
-                        onChange={(e) => setRegisterPassword(e.target.value)}
+                        onChange={(e) => {
+                          setRegisterPassword(e.target.value);
+                          checkPasswordStrength(e.target.value);
+                        }}
                         placeholder="Create a password"
                         type="password"
                         className="pl-10"
                       />
+                    </div>
+                    <div className="space-y-1 mt-1">
+                      <Progress value={passwordStrength} className="h-2" />
+                      <p className={`text-xs ${
+                        passwordStrength < 40 ? 'text-destructive' : 
+                        passwordStrength < 70 ? 'text-amber-500' : 
+                        'text-green-500'
+                      }`}>
+                        {passwordFeedback}
+                      </p>
                     </div>
                   </div>
                   
