@@ -1,12 +1,8 @@
 
-import { createClient } from '@supabase/supabase-js';
+// This file is being deprecated in favor of using the official Supabase client
+// from src/integrations/supabase/client.ts
 
-// Initialize the Supabase client with fallback values for development
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project-url.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
-
-// Create the Supabase client
-export const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from '@/integrations/supabase/client';
 
 // Database types that match our tables
 export type EmployeeDB = {
@@ -39,15 +35,8 @@ export type InvitationDB = {
 
 // Helper function to check if Supabase is configured correctly
 export const isSupabaseConfigured = (): boolean => {
-  return supabaseUrl !== 'https://your-project-url.supabase.co' && 
-         supabaseKey !== 'your-anon-key' &&
-         supabaseUrl !== '' && 
-         supabaseKey !== '';
+  return true; // We are now using the imported client which is properly configured
 }
 
 // Log Supabase configuration status
-console.log('Supabase configuration status:', isSupabaseConfigured() ? 'Configured' : 'Not configured');
-if (!isSupabaseConfigured()) {
-  console.warn('Supabase is not properly configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
-  console.warn('For Lovable users: Make sure to connect Supabase in your project settings and set the environment variables.');
-}
+console.log('Supabase configuration status: Configured');

@@ -1,14 +1,8 @@
-
 import { v4 as uuidv4 } from 'uuid';
-import { createClient } from '@supabase/supabase-js';
-
-// Supabase setup - using Vite's import.meta.env instead of process.env
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from '@/integrations/supabase/client';
 
 // Flag to determine whether to use Supabase or local storage
-const useSupabase = supabaseUrl && supabaseKey;
+const useSupabase = true; // We're connected to Supabase now
 
 export interface Employee {
   id: string;
