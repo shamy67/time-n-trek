@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -186,7 +187,7 @@ const Login = () => {
           <img 
             src="/lovable-uploads/fd15a914-326d-4b02-84d9-11611f8e0903.png" 
             alt="CULTIV BUREAU Logo" 
-            className="h-10" 
+            className="h-16" /* Increased from h-10 to h-16 */
           />
         </div>
       </header>
