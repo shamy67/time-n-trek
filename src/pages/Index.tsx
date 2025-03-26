@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { AlertCircle, Info, History as HistoryIcon, User, Clock, Menu } from 'lucide-react';
+import { AlertCircle, Info, History as HistoryIcon, User, Clock, Menu, QrCode } from 'lucide-react';
 import { useTimer, BreakEntry } from '@/hooks/useTimer';
 import { useLocation } from '@/hooks/useLocation';
 import TimeStatus from '@/components/TimeStatus';
@@ -154,11 +153,21 @@ const Index = () => {
           <img 
             src="/lovable-uploads/fd15a914-326d-4b02-84d9-11611f8e0903.png" 
             alt="CULTIV BUREAU Logo" 
-            className="h-20" /* Increased from h-16 to h-20 to match design */
+            className="h-20" 
           />
         </div>
         
         <div className="flex items-center space-x-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate('/profile')}
+            title="View Profile & QR Code"
+            className="text-black hover:bg-gray-100"
+          >
+            <QrCode className="h-5 w-5" />
+          </Button>
+          
           <Button 
             variant="ghost" 
             size="icon"
