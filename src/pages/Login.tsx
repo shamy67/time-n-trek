@@ -187,7 +187,7 @@ const Login = () => {
           <img 
             src="/lovable-uploads/fd15a914-326d-4b02-84d9-11611f8e0903.png" 
             alt="CULTIV BUREAU Logo" 
-            className="h-16" /* Increased from h-10 to h-16 */
+            className="h-20" /* Increased from h-16 to h-20 to match design */
           />
         </div>
       </header>

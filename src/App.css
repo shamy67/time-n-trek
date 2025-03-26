@@ -7,7 +7,7 @@
 }
 
 .logo {
-  height: 6rem; /* Increased from 3rem to 6rem */
+  height: 6rem;
   padding: 0;
   will-change: filter;
   transition: filter 300ms;
@@ -25,7 +25,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 2rem;
+  padding: 0.75rem 1.5rem; /* Adjusted padding to accommodate larger logo */
   background-color: white;
   border-bottom: 2px solid black;
 }
