@@ -136,6 +136,10 @@ const Index = () => {
     setSummaryData(null);
   };
 
+  const handleProfileClick = () => {
+    navigate('/profile');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
@@ -183,7 +187,7 @@ const Index = () => {
           <Button 
             variant="ghost" 
             size="icon"
-            onClick={() => navigate('/login')}
+            onClick={handleProfileClick}
             title="Profile"
             className="text-black hover:bg-gray-100"
           >
