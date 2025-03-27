@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -43,13 +44,20 @@ const Login = () => {
       if (employee) {
         setCurrentEmployee(employee);
         setIsLoggedIn(true);
+        
+        // If already logged in, redirect to the appropriate page
+        if (employee.isAdmin) {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       }
       
       setLoading(false);
     };
     
     init();
-  }, []);
+  }, [navigate]);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
@@ -101,13 +109,16 @@ const Login = () => {
         setCurrentEmployee(employee);
         setIsLoggedIn(true);
         
-        if (employee.isAdmin) {
-          navigate('/admin');
-          toast.success('Welcome, Administrator');
-        } else {
-          navigate('/');
-          toast.success('Login successful');
-        }
+        toast.success('Login successful');
+        
+        // Ensure we redirect after setting the state
+        setTimeout(() => {
+          if (employee.isAdmin) {
+            navigate('/admin');
+          } else {
+            navigate('/');
+          }
+        }, 100);
       } else {
         toast.error('Invalid credentials');
       }
@@ -161,8 +172,13 @@ const Login = () => {
       localStorage.setItem('timetrack_current_user', newEmployeeId);
       setCurrentEmployee(newEmployee);
       setIsLoggedIn(true);
-      navigate('/');
+      
       toast.success('Registration successful');
+      
+      // Ensure we redirect after setting the state
+      setTimeout(() => {
+        navigate('/');
+      }, 100);
     } catch (error) {
       console.error('Registration error:', error);
       toast.error('Registration failed');

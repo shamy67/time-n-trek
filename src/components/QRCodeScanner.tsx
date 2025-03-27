@@ -62,12 +62,15 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
             // Clear the URL parameter without reloading
             window.history.replaceState({}, document.title, window.location.pathname);
             
-            // Navigate to dashboard or call onLogin
-            if (onLogin) {
-              onLogin();
-            } else {
-              navigate('/');
-            }
+            // Ensure we redirect after setting the state
+            setTimeout(() => {
+              // Navigate to dashboard or call onLogin
+              if (onLogin) {
+                onLogin();
+              } else {
+                navigate('/');
+              }
+            }, 100);
           }
         } catch (error) {
           console.error('QR code error:', error);
@@ -163,11 +166,14 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
       
       toast.success('Login successful');
       
-      if (onLogin) {
-        onLogin();
-      } else {
-        navigate('/');
-      }
+      // Ensure we redirect after setting the state
+      setTimeout(() => {
+        if (onLogin) {
+          onLogin();
+        } else {
+          navigate('/');
+        }
+      }, 100);
     } catch (error) {
       console.error('Join code error:', error);
       toast.error('Failed to parse employee code');
