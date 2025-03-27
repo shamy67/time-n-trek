@@ -5,7 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { getCurrentEmployee } from '@/services/employeeService';
 import { Employee } from '@/services/employeeService';
 import { Button } from '@/components/ui/button';
-import { Copy, Download, QrCode, ArrowLeft } from 'lucide-react';
+import { Copy, Download, QrCode, ArrowLeft, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Profile = () => {
@@ -87,6 +87,14 @@ const Profile = () => {
     toast.success('Employee data copied to clipboard');
   };
 
+  const handleLogout = () => {
+    // Clear the current user from localStorage
+    localStorage.removeItem('timetrack_current_user');
+    toast.success('Logged out successfully');
+    // Navigate to the login page
+    navigate('/login');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center">
@@ -115,6 +123,16 @@ const Profile = () => {
             className="text-black hover:bg-gray-100"
           >
             <ArrowLeft className="h-5 w-5" />
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handleLogout}
+            title="Logout"
+            className="text-black hover:bg-gray-100"
+          >
+            <LogOut className="h-5 w-5" />
           </Button>
         </div>
       </header>
@@ -173,6 +191,14 @@ const Profile = () => {
               >
                 <Copy className="mr-2 h-4 w-4" />
                 Export Employee Data
+              </Button>
+              
+              <Button
+                onClick={handleLogout}
+                className="cultiv-button-outline w-full flex items-center justify-center"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
               </Button>
             </div>
           </div>
