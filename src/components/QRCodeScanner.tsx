@@ -46,7 +46,9 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
           const employeeData = JSON.parse(decodedData);
           
           if (employeeData.id && employeeData.name) {
+            console.log("QR login successful, employee:", employeeData);
             // Set current employee
+            localStorage.setItem('timetrack_current_user', employeeData.id);
             setCurrentEmployee(employeeData.id);
             
             // Add employee if not exists
@@ -64,13 +66,14 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
             
             // Ensure we redirect after setting the state
             setTimeout(() => {
+              console.log("Redirecting after QR login...");
               // Navigate to dashboard or call onLogin
               if (onLogin) {
                 onLogin();
               } else {
                 navigate('/');
               }
-            }, 100);
+            }, 500); // Increased timeout
           }
         } catch (error) {
           console.error('QR code error:', error);
@@ -153,7 +156,9 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
         return;
       }
       
+      console.log("Manual code login successful, employee:", employeeData);
       // Set current employee
+      localStorage.setItem('timetrack_current_user', employeeData.id);
       setCurrentEmployee(employeeData.id);
       
       // Add employee if not exists
@@ -168,12 +173,13 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onLogin }) => {
       
       // Ensure we redirect after setting the state
       setTimeout(() => {
+        console.log("Redirecting after manual code login...");
         if (onLogin) {
           onLogin();
         } else {
           navigate('/');
         }
-      }, 100);
+      }, 500); // Increased timeout
     } catch (error) {
       console.error('Join code error:', error);
       toast.error('Failed to parse employee code');

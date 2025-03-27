@@ -38,8 +38,10 @@ const Index = () => {
       const employee = await getCurrentEmployee();
       
       if (!employee) {
+        console.log("No employee found, redirecting to login");
         navigate('/login');
       } else {
+        console.log("Employee found in Index page:", employee);
         setCurrentEmployee(employee);
       }
       

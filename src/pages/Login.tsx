@@ -42,15 +42,19 @@ const Login = () => {
       
       const employee = await getCurrentEmployee();
       if (employee) {
+        console.log("Found existing employee in localStorage:", employee);
         setCurrentEmployee(employee);
         setIsLoggedIn(true);
         
         // If already logged in, redirect to the appropriate page
-        if (employee.isAdmin) {
-          navigate('/admin');
-        } else {
-          navigate('/');
-        }
+        setTimeout(() => {
+          console.log("Redirecting existing user...");
+          if (employee.isAdmin) {
+            navigate('/admin');
+          } else {
+            navigate('/');
+          }
+        }, 100);
       }
       
       setLoading(false);
@@ -106,6 +110,8 @@ const Login = () => {
       const employee = await loginWithCredentials(loginEmail, loginPassword);
       
       if (employee) {
+        console.log("Login successful, employee:", employee);
+        localStorage.setItem('timetrack_current_user', employee.id);
         setCurrentEmployee(employee);
         setIsLoggedIn(true);
         
@@ -113,12 +119,13 @@ const Login = () => {
         
         // Ensure we redirect after setting the state
         setTimeout(() => {
+          console.log("Redirecting after login...");
           if (employee.isAdmin) {
             navigate('/admin');
           } else {
             navigate('/');
           }
-        }, 100);
+        }, 300); // Increased timeout to ensure state is updated
       } else {
         toast.error('Invalid credentials');
       }
@@ -177,8 +184,9 @@ const Login = () => {
       
       // Ensure we redirect after setting the state
       setTimeout(() => {
+        console.log("Redirecting after registration...");
         navigate('/');
-      }, 100);
+      }, 300); // Increased timeout
     } catch (error) {
       console.error('Registration error:', error);
       toast.error('Registration failed');
