@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   getCurrentEmployee, 
   initializeAdmin, 
@@ -9,7 +8,6 @@ import {
   Employee,
   checkEmailExists
 } from '@/services/employeeService';
-import QRCodeScanner from '@/components/QRCodeScanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,10 +17,9 @@ import { toast } from 'sonner';
 
 const Login = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState<'qr' | 'login' | 'register'>('qr');
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [loading, setLoading] = useState(true);
   
   const [loginEmail, setLoginEmail] = useState('');
@@ -62,11 +59,6 @@ const Login = () => {
     
     init();
   }, [navigate]);
-
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-    navigate('/');
-  };
 
   const checkPasswordStrength = (password: string) => {
     let strength = 0;
@@ -255,14 +247,6 @@ const Login = () => {
           <>
             <div className="flex border-b-2 border-black">
               <button
-                onClick={() => setActiveTab('qr')}
-                className={`flex-1 py-3 text-center font-bold text-sm uppercase ${
-                  activeTab === 'qr' ? 'border-b-4 border-black' : ''
-                }`}
-              >
-                QR Code
-              </button>
-              <button
                 onClick={() => setActiveTab('login')}
                 className={`flex-1 py-3 text-center font-bold text-sm uppercase ${
                   activeTab === 'login' ? 'border-b-4 border-black' : ''
@@ -281,8 +265,6 @@ const Login = () => {
             </div>
 
             <div className="mt-6">
-              {activeTab === 'qr' && <QRCodeScanner onLogin={handleLogin} />}
-
               {activeTab === 'login' && (
                 <div className="w-full border-2 border-black p-6 space-y-4">
                   <h3 className="text-lg font-bold text-center uppercase">Login with Credentials</h3>
