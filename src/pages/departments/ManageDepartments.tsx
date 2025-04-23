@@ -29,7 +29,7 @@ interface Department {
   general_manager_id: string | null;
   supervisor?: {
     name: string;
-  };
+  } | null;
 }
 
 interface Employee {
@@ -76,7 +76,7 @@ const ManageDepartments = () => {
         return;
       }
 
-      // Load departments
+      // Load departments with specific column hint for supervisor
       const { data: departmentsData, error: departmentsError } = await supabase
         .from('departments')
         .select(`
@@ -85,7 +85,7 @@ const ManageDepartments = () => {
         `);
 
       if (departmentsError) throw departmentsError;
-      setDepartments(departmentsData);
+      setDepartments(departmentsData as Department[]);
 
       // Load employees
       const { data: employeesData, error: employeesError } = await supabase

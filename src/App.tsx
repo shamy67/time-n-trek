@@ -11,6 +11,7 @@ import History from '@/pages/History';
 import Admin from '@/pages/Admin';
 import EmployeeDetails from '@/pages/EmployeeDetails';
 import ManageDepartments from '@/pages/departments/ManageDepartments';
+import DepartmentDetails from '@/pages/departments/DepartmentDetails';
 import NotFound from '@/pages/NotFound';
 import './App.css';
 
@@ -27,6 +28,7 @@ function App() {
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/employee/:id" element={<EmployeeDetails />} />
             <Route path="/departments" element={<ManageDepartments />} />
+            <Route path="/departments/:id" element={<DepartmentDetails />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
