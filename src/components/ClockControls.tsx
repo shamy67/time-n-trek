@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Play, Pause, StopCircle, Coffee, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -10,13 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 
 type TimeStatusType = 'inactive' | 'active' | 'break';
@@ -64,6 +57,13 @@ const ClockControls: React.FC<ClockControlsProps> = ({
   const handleBreakStart = (breakType: BreakType) => {
     onStartBreak(breakType);
     setBreakDialogOpen(false);
+  };
+
+  const handleTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value) || value === '') {
+      setSelectedTime(value);
+    }
   };
 
   const handleManualClockIn = () => {
@@ -178,22 +178,13 @@ const ClockControls: React.FC<ClockControlsProps> = ({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Select Time</label>
-              <Select
+              <label className="text-sm font-medium">Enter Time (HH:mm)</label>
+              <Input
+                type="time"
                 value={selectedTime}
-                onValueChange={setSelectedTime}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select time" />
-                </SelectTrigger>
-                <SelectContent>
-                  {generateTimeOptions().map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={handleTimeChange}
+                className="w-full"
+              />
             </div>
             <Button 
               onClick={handleManualClockIn}
