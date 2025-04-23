@@ -9,8 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      departments: {
+        Row: {
+          general_manager_id: string | null
+          id: string
+          name: string
+          supervisor_id: string | null
+        }
+        Insert: {
+          general_manager_id?: string | null
+          id: string
+          name: string
+          supervisor_id?: string | null
+        }
+        Update: {
+          general_manager_id?: string | null
+          id?: string
+          name?: string
+          supervisor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_general_manager_id_fkey"
+            columns: ["general_manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "departments_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
+          department_id: string | null
           email: string
           id: string
           is_admin: boolean | null
@@ -19,6 +56,7 @@ export type Database = {
           password: string | null
         }
         Insert: {
+          department_id?: string | null
           email: string
           id: string
           is_admin?: boolean | null
@@ -27,6 +65,7 @@ export type Database = {
           password?: string | null
         }
         Update: {
+          department_id?: string | null
           email?: string
           id?: string
           is_admin?: boolean | null
@@ -34,7 +73,15 @@ export type Database = {
           name?: string
           password?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "employees_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invitations: {
         Row: {
@@ -62,6 +109,50 @@ export type Database = {
           token?: string
         }
         Relationships: []
+      }
+      leave_requests: {
+        Row: {
+          attachment_url: string | null
+          created_at: string | null
+          employee_id: string
+          from_date: string
+          id: string
+          reason: string
+          rejection_reason: string | null
+          status: string
+          to_date: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string | null
+          employee_id: string
+          from_date: string
+          id: string
+          reason: string
+          rejection_reason?: string | null
+          status?: string
+          to_date: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string | null
+          employee_id?: string
+          from_date?: string
+          id?: string
+          reason?: string
+          rejection_reason?: string | null
+          status?: string
+          to_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       time_records: {
         Row: {

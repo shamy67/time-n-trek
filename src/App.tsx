@@ -10,6 +10,7 @@ import Profile from '@/pages/Profile';
 import History from '@/pages/History';
 import Admin from '@/pages/Admin';
 import EmployeeDetails from '@/pages/EmployeeDetails';
+import ManageDepartments from '@/pages/departments/ManageDepartments';
 import NotFound from '@/pages/NotFound';
 import './App.css';
 
@@ -25,6 +26,7 @@ function App() {
             <Route path="/history" element={<History />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/employee/:id" element={<EmployeeDetails />} />
+            <Route path="/departments" element={<ManageDepartments />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
