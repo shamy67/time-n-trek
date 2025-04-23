@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -22,7 +21,7 @@ import {
   Employee,
   TimeRecord
 } from '@/services/employeeService';
-import { FileDown, Users, Clock, Calendar, UserCog, MailPlus } from 'lucide-react';
+import { FileDown, Users, Clock, Calendar, UserCog, MailPlus, Home, Inbox, Search, Settings, Building } from 'lucide-react';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { ManageUsers } from '@/components/ManageUsers';
 import { ManageInvitations } from '@/components/ManageInvitations';
@@ -278,6 +277,13 @@ const Admin = () => {
                   )}
                 </TableBody>
               </Table>
+            </div>
+            
+            <div className="flex justify-end mt-4">
+              <Button onClick={() => navigate('/departments')} className="flex items-center">
+                <Building className="mr-2 h-4 w-4" />
+                Manage Departments
+              </Button>
             </div>
           </TabsContent>
           
