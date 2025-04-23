@@ -51,10 +51,10 @@ const Index = () => {
     checkLogin();
   }, [navigate]);
 
-  const handleClockIn = async () => {
+  const handleClockIn = async (manualTime?: Date) => {
     try {
       setStatus('active');
-      timer.startTimer();
+      timer.startTimer(manualTime);
       
       const locationData = await location.getLocation();
       
@@ -64,7 +64,7 @@ const Index = () => {
         });
       } else {
         toast.success('Clocked in successfully', {
-          description: 'Your shift has started'
+          description: manualTime ? 'Manual clock-in recorded' : 'Your shift has started'
         });
       }
     } catch (error) {

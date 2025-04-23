@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 
 interface TimerState {
@@ -74,8 +73,8 @@ export function useTimer() {
     });
   };
 
-  const startTimer = () => {
-    const startTime = new Date();
+  const startTimer = (manualTime?: Date) => {
+    const startTime = manualTime || new Date();
     
     setState({
       isRunning: true,

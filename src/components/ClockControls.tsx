@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Play, Pause, StopCircle, Coffee } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, Pause, StopCircle, Coffee, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,14 +9,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { format } from 'date-fns';
 
 type TimeStatusType = 'inactive' | 'active' | 'break';
-
 type BreakType = 'Salah' | 'Meeting' | 'Lunch' | 'Breakfast' | 'Break';
 
 interface ClockControlsProps {
   status: TimeStatusType;
-  onClockIn: () => void;
+  onClockIn: (manualTime?: Date) => void;
   onClockOut: () => void;
   onStartBreak: (breakType: BreakType) => void;
   onEndBreak: () => void;
@@ -24,6 +32,19 @@ interface ClockControlsProps {
 }
 
 const breakOptions: BreakType[] = ['Salah', 'Meeting', 'Lunch', 'Breakfast', 'Break'];
+
+const generateTimeOptions = () => {
+  const options = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      options.push({
+        value: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+        label: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+      });
+    }
+  }
+  return options;
+};
 
 const ClockControls: React.FC<ClockControlsProps> = ({
   status,
@@ -33,25 +54,51 @@ const ClockControls: React.FC<ClockControlsProps> = ({
   onEndBreak,
   loading = false
 }) => {
-  const [breakDialogOpen, setBreakDialogOpen] = React.useState(false);
+  const [breakDialogOpen, setBreakDialogOpen] = useState(false);
+  const [manualClockInOpen, setManualClockInOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedTime, setSelectedTime] = useState<string>(
+    format(new Date(), 'HH:mm')
+  );
 
   const handleBreakStart = (breakType: BreakType) => {
     onStartBreak(breakType);
     setBreakDialogOpen(false);
   };
 
+  const handleManualClockIn = () => {
+    if (selectedDate && selectedTime) {
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const dateTime = new Date(selectedDate);
+      dateTime.setHours(hours, minutes, 0, 0);
+      onClockIn(dateTime);
+      setManualClockInOpen(false);
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col items-center justify-center w-full gap-4 animate-enter animate-delay-200">
         {status === 'inactive' && (
-          <Button
-            onClick={onClockIn}
-            disabled={loading}
-            className="button-primary w-full max-w-xs h-14 gap-2 text-lg"
-          >
-            <Play className="w-5 h-5" />
-            Clock In
-          </Button>
+          <>
+            <Button
+              onClick={() => onClockIn()}
+              disabled={loading}
+              className="button-primary w-full max-w-xs h-14 gap-2 text-lg"
+            >
+              <Play className="w-5 h-5" />
+              Clock In
+            </Button>
+            <Button
+              onClick={() => setManualClockInOpen(true)}
+              disabled={loading}
+              variant="outline"
+              className="w-full max-w-xs h-14 gap-2"
+            >
+              <Clock className="w-5 h-5" />
+              Manual Clock In
+            </Button>
+          </>
         )}
 
         {status === 'active' && (
@@ -110,6 +157,50 @@ const ClockControls: React.FC<ClockControlsProps> = ({
                 {breakType}
               </Button>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={manualClockInOpen} onOpenChange={setManualClockInOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center mb-4">Manual Clock In</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Date</label>
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                className="rounded-md border shadow"
+                disabled={(date) => date > new Date()}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Time</label>
+              <Select
+                value={selectedTime}
+                onValueChange={setSelectedTime}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {generateTimeOptions().map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button 
+              onClick={handleManualClockIn}
+              className="w-full"
+            >
+              Confirm Manual Clock In
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
