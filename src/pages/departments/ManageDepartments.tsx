@@ -76,16 +76,20 @@ const ManageDepartments = () => {
         return;
       }
 
-      // Load departments with specific column hint for supervisor
+      // Load departments with properly specified supervisor relationship
       const { data: departmentsData, error: departmentsError } = await supabase
         .from('departments')
         .select(`
-          *,
-          supervisor:supervisor_id(name)
-        `);
+          id,
+          name,
+          supervisor_id,
+          general_manager_id,
+          supervisor:employees(name)
+        `)
+        .returns<Department[]>();
 
       if (departmentsError) throw departmentsError;
-      setDepartments(departmentsData as Department[]);
+      setDepartments(departmentsData);
 
       // Load employees
       const { data: employeesData, error: employeesError } = await supabase
