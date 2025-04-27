@@ -139,6 +139,11 @@ const Admin = () => {
     navigate(`/admin/employee/${employeeId}`);
   };
   
+  const handleNavigateToDepartments = () => {
+    console.log("Navigating to departments page");
+    navigate('/departments');
+  };
+  
   const filteredEmployees = employeeStats.filter(employee => 
     employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     employee.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -280,7 +285,7 @@ const Admin = () => {
             </div>
             
             <div className="flex justify-end mt-4">
-              <Button onClick={() => navigate('/departments')} className="flex items-center">
+              <Button onClick={handleNavigateToDepartments} className="flex items-center">
                 <Building className="mr-2 h-4 w-4" />
                 Manage Departments
               </Button>

@@ -65,19 +65,19 @@ const ManageDepartments = () => {
           name,
           supervisor_id,
           general_manager_id,
-          supervisor:employees(name)
+          supervisor:employees!supervisor_id(name)
         `)
         .returns<Department[]>();
 
       if (departmentsError) throw departmentsError;
-      setDepartments(departmentsData);
+      setDepartments(departmentsData || []);
 
       const { data: employeesData, error: employeesError } = await supabase
         .from('employees')
         .select('*');
 
       if (employeesError) throw employeesError;
-      setEmployees(employeesData);
+      setEmployees(employeesData || []);
     } catch (error) {
       console.error('Error loading data:', error);
       toast({
@@ -91,7 +91,7 @@ const ManageDepartments = () => {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div className="container mx-auto py-6">Loading...</div>;
   }
 
   return (
